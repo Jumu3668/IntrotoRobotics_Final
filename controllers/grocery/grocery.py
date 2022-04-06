@@ -2,9 +2,10 @@
 
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
-from controller import Robot
+from controller import Robot, Keyboard, Lidar, RangeFinder, Motor, Camera
 import math
 import numpy as np
+
 
 #Initialization
 print("=== Initializing Grocery Shopper...")
@@ -59,6 +60,10 @@ lidar.enablePointCloud()
 # Enable display
 display = robot.getDevice("display")
 
+#set up keybaord call
+keyboard = robot.getKeyboard()
+keyboard.enable(timestep)
+
 # Odometry
 pose_x     = 0
 pose_y     = 0
@@ -79,12 +84,32 @@ map = None
 # Helper Functions
 
 
-
+modeManual = True #uncomment to put in manual mode
+#modeAuto = True #uncomment to put in manual mode
 # Main Loop
 while robot.step(timestep) != -1:
     
-    
-    
-    
+    if modeManual == True:
+        key = keyboard.getKey()
+        while(keyboard.getKey() != -1): 
+            if key == keyboard.LEFT:
+                print("Pressed Left")
+                vL = -MAX_SPEED
+                vR = MAX_SPEED
+            elif key == keyboard.RIGHT:
+                print("Pressed Right")
+                vL = MAX_SPEED
+                vR = -MAX_SPEED
+            elif key == keyboard.UP:
+                print("Pressed Forward")
+                vL = MAX_SPEED
+                vR = MAX_SPEED
+            elif key == keyboard.DOWN:
+                print("Pressed Back")
+                vL = -MAX_SPEED
+                vR = -MAX_SPEED
+            else: # slow down
+                vL *= 0.75
+                vR *= 0.75
     robot.getDevice("wheel_left_joint").setVelocity(vL)
     robot.getDevice("wheel_right_joint").setVelocity(vR)
