@@ -83,8 +83,33 @@ map = None
 # Main Loop
 while robot.step(timestep) != -1:
     
+<<<<<<< Updated upstream
     
     
     
+=======
+    if modeManual == True:
+        key = keyboard.getKey()
+        while(keyboard.getKey() != -1): pass
+        if key == keyboard.LEFT:
+            print("Pressed Left")
+            vL = -MAX_SPEED
+            vR = MAX_SPEED
+        elif key == keyboard.RIGHT:
+            print("Pressed Right")
+            vL = MAX_SPEED
+            vR = -MAX_SPEED
+        elif key == keyboard.UP:
+            print("Pressed Forward")
+            vL = MAX_SPEED
+            vR = MAX_SPEED
+        elif key == keyboard.DOWN:
+            print("Pressed Back")
+            vL = -MAX_SPEED
+            vR = -MAX_SPEED
+        else: # slow down
+            vL *= 0.75
+            vR *= 0.75
+>>>>>>> Stashed changes
     robot.getDevice("wheel_left_joint").setVelocity(vL)
     robot.getDevice("wheel_right_joint").setVelocity(vR)
