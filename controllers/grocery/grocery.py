@@ -339,8 +339,8 @@ while robot.step(timestep) != -1 and mode != 'planner':
         # print("pose_x " + str(pose_x))
 
         # Convert detection from robot coordinates into world coordinates
-        wx =  math.cos(pose_theta)*rx - math.sin(pose_theta)*ry - pose_x
-        wy =  -(math.sin(pose_theta)*rx + math.cos(pose_theta)*ry) + pose_y
+        wx =  math.cos(pose_theta)*rx - math.sin(pose_theta)*ry - pose_y
+        wy =  -(math.sin(pose_theta)*rx + math.cos(pose_theta)*ry) + pose_x
     
         ################ ^ [End] Do not modify ^ ##################
 
