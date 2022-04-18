@@ -286,7 +286,7 @@ if mode == 'planner':
 # Part 1.2: Map Initialization
 
 # Initialize your map data structure here as a 2D floating point array
-map = np.zeros((900,480)) # Replace None by a numpy 2D floating point array
+map = np.zeros((480,900)) # Replace None by a numpy 2D floating point array
 waypoints = []
 if mode == 'autonomous':
     # Part 3.1: Load path from disk and visualize it
@@ -307,12 +307,11 @@ while robot.step(timestep) != -1 and mode != 'planner':
 
     ################ v [Begin] Do not modify v ##################
     # Ground truth pose
-    pose_y = gps.getValues()[2]
-    pose_x = gps.getValues()[0]
+    pose_x = gps.getValues()[2]
+    pose_y = gps.getValues()[0]
 
     n = compass.getValues()
-    rad = -((math.atan2(n[0], n[2]))-1.5708)
-    pose_theta = rad
+    pose_theta = -((math.atan2(n[0], n[2]))-1.5708)
 
     lidar_sensor_readings = lidar.getRangeImage()
     lidar_sensor_readings = lidar_sensor_readings[83:len(lidar_sensor_readings)-83]
@@ -338,9 +337,9 @@ while robot.step(timestep) != -1 and mode != 'planner':
         # print("sine theta " + str(math.sin(pose_theta)))
         # print("pose_theta " + str(pose_theta))
         # print("pose_x " + str(pose_x))
+
         # Convert detection from robot coordinates into world coordinates
         wx =  math.cos(pose_theta)*rx - math.sin(pose_theta)*ry - pose_x
-        # wx = 
         wy =  -(math.sin(pose_theta)*rx + math.cos(pose_theta)*ry) + pose_y
     
         ################ ^ [End] Do not modify ^ ##################
@@ -353,35 +352,38 @@ while robot.step(timestep) != -1 and mode != 'planner':
             # You will eventually REPLACE the following 2 lines with a more robust version of the map
             # with a grayscale drawing containing more levels than just 0 and 1.
             # display.setColor(0xFFFFFF)
-            
+            # print("wy" + str(wy))
+            # print("wx" + str(wx))
             wyy = 900-int(wy*30)
             wxx = int(wx*30)
             # print("wy: " + str(wyy))
             # print("wx: " + str(wxx))
                           
-            if wyy >= 480 or wxx >= 900:
+            if wyy >= 900 or wxx >= 480:
 
-                if wyy >= 480:
-                    wyy = 480
-                if wxx >= 900:
-                    wxx = 900
-                
-            val = map[wyy-1][wxx-1]
+                if wyy >= 900:
+                    wyy = 900
+                if wxx >= 480:
+                    wxx = 480
+
+            # grayscale code    
+            val = map[wxx-1][wyy-1]
             if val >= 1:
                 val = 1
             else:
                 val += 0.005
-                map[wyy-1][wxx-1] = val
+                map[wxx-1][wyy-1] = val
             
             g = int(val* 255) # converting [0,1] to grayscale intensity [0,255]
             color = g*256**2+g*256+g
             display.setColor(color)
-            display.drawPixel(wxx,wyy)
-            
+            display.drawPixel(wxx,wyy) #draws from the top left corner(0,900)
+            # print("wxx" + str(wxx))
+            # print("wyy" + str(wyy))
             
     # Draw the robot's current pose on the 360x360 display
     display.setColor(int(0xFF0000))
-    display.drawPixel(int(pose_y*30),int(-pose_x*30))
+    display.drawPixel(int(100+pose_x*30),int(320-pose_y*30))
     
 
     ###################
