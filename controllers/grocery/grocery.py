@@ -63,7 +63,7 @@ compass.enable(timestep)
 keyboard = robot.getKeyboard()
 keyboard.enable(timestep)
 
-# The display is used to display the map. We are using 360x360 pixels to
+# The display is used to display the map. We are using 480x900 pixels to
 # map the 12x12m2 apartment
 display = robot.getDevice("display")
 
@@ -286,7 +286,7 @@ if mode == 'planner':
 # Part 1.2: Map Initialization
 
 # Initialize your map data structure here as a 2D floating point array
-map = np.zeros((360,360)) # Replace None by a numpy 2D floating point array
+map = np.zeros((900,480)) # Replace None by a numpy 2D floating point array
 waypoints = []
 if mode == 'autonomous':
     # Part 3.1: Load path from disk and visualize it
@@ -354,17 +354,17 @@ while robot.step(timestep) != -1 and mode != 'planner':
             # with a grayscale drawing containing more levels than just 0 and 1.
             # display.setColor(0xFFFFFF)
             
-            wyy = 360-int(wy*30)
+            wyy = 900-int(wy*30)
             wxx = int(wx*30)
             # print("wy: " + str(wyy))
             # print("wx: " + str(wxx))
                           
-            if wyy >= 360 or wxx >= 360:
+            if wyy >= 480 or wxx >= 900:
 
-                if wyy >= 360:
-                    wyy = 360
-                if wxx >= 360:
-                    wxx = 360
+                if wyy >= 480:
+                    wyy = 480
+                if wxx >= 900:
+                    wxx = 900
                 
             val = map[wyy-1][wxx-1]
             if val >= 1:
