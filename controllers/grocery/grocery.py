@@ -13,9 +13,9 @@ MOTOR_LEFT = 10
 MOTOR_RIGHT = 11
 N_PARTS = 12
 
-LIDAR_ANGLE_BINS = 667
+LIDAR_ANGLE_BINS = 667 #number of rays
 LIDAR_SENSOR_MAX_RANGE = 2.75 # Meters
-LIDAR_ANGLE_RANGE = math.radians(240)
+LIDAR_ANGLE_RANGE = math.radians(240) #given to us how?
 
 
 ##### vvv [Begin] Do Not Modify vvv #####
@@ -76,7 +76,8 @@ vL = 0
 vR = 0
 
 lidar_sensor_readings = [] # List to hold sensor readings
-lidar_offsets = np.linspace(-LIDAR_ANGLE_RANGE/2., +LIDAR_ANGLE_RANGE/2., LIDAR_ANGLE_BINS)
+lidar_offsets = np.linspace(-LIDAR_ANGLE_RANGE/2., +LIDAR_ANGLE_RANGE/2., LIDAR_ANGLE_BINS) #position in radians of all lidar bins on robot
+# print(lidar_offsets)
 lidar_offsets = lidar_offsets[83:len(lidar_offsets)-83] # Only keep lidar readings not blocked by robot chassis
 
 map = None
@@ -315,13 +316,17 @@ while robot.step(timestep) != -1 and mode != 'planner':
 
     lidar_sensor_readings = lidar.getRangeImage()
     lidar_sensor_readings = lidar_sensor_readings[83:len(lidar_sensor_readings)-83]
+    # print(str(lidar_sensor_readings))
 
     for i, rho in enumerate(lidar_sensor_readings):
-        alpha = lidar_offsets[i]
+        alpha = lidar_offsets[i] #get current lidar bin position in radians
 
+        # rho is single lidar sensor reading at position 'i'
         if rho > LIDAR_SENSOR_MAX_RANGE:
-            continue
-
+            continue #if rho value too far... skip to next number
+        
+        # print(str(rho))
+        # print(str(i))
         # The Webots coordinate system doesn't match the robot-centric axes we're used to
         rx = math.cos(alpha)*rho
         ry = -math.sin(alpha)*rho
@@ -371,12 +376,12 @@ while robot.step(timestep) != -1 and mode != 'planner':
             g = int(val* 255) # converting [0,1] to grayscale intensity [0,255]
             color = g*256**2+g*256+g
             display.setColor(color)
-            display.drawPixel(wyy,wxx)
+            display.drawPixel(wxx,wyy)
             
             
     # Draw the robot's current pose on the 360x360 display
     display.setColor(int(0xFF0000))
-    display.drawPixel(360-int(pose_y*30),int(-pose_x*30))
+    display.drawPixel(int(pose_y*30),int(-pose_x*30))
     
 
     ###################
