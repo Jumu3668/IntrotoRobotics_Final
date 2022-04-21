@@ -88,7 +88,17 @@ modeManual = True #uncomment to put in manual mode
 #modeAuto = True #uncomment to put in manual mode
 # Main Loop
 while robot.step(timestep) != -1:
-    
+    item_detected = False
+    target_pos = (1.0, 0.1, 0.09, 0.07, 1.02, -3.16, 1.27, 1.32, 0.0, 1.41, 'inf', 'inf')
+    if item_detected:
+        part_names[3].setPosition(float(target_pos[i]))
+        part_names[4].setPosition(float(target_pos[i]))
+        part_names[5].setPosition(float(target_pos[i]))
+        part_names[6].setPosition(float(target_pos[i]))
+        part_names[7].setPosition(float(target_pos[i]))
+        part_names[8].setPosition(float(target_pos[i]))
+        part_names[9].setPosition(float(target_pos[i]))
+        robot_parts[i].setVelocity(robot_parts[i].getMaxVelocity() / 2.0)
     if modeManual == True:
         key = keyboard.getKey()
         while(keyboard.getKey() != -1): 
