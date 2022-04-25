@@ -182,6 +182,8 @@ state = 0 # use this to iterate through your path
 # localization_mode = 'gps'
 localization_mode = 'odometry'
 
+print(localization_mode) 
+
 while robot.step(timestep) != -1 and mode != 'planner':
 
     ###################
@@ -190,7 +192,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
     #
     ###################
 
-    ################ v [Begin] Do not modify v ##################
     # GPS BASED Ground truth pose
     
     if localization_mode == 'gps':
@@ -214,14 +215,21 @@ while robot.step(timestep) != -1 and mode != 'planner':
             continue #if rho value too far... skip to next number
 
         # Convert detection from robot coordinates into world coordinates
-        wx = -math.cos(pose_theta - alpha) * rho + pose_x
+        
         wy = -math.sin(pose_theta - alpha) * rho + pose_y
+        wx = -math.cos(pose_theta - alpha) * rho + pose_x
+        #convert world coordinates into display coordinates
+        if localization_mode == 'gps': 
+            dy = 320-int(wy*30)
+            dx = 100+int(wx*30)
+            
+        if localization_mode == 'odometry':
+            dy = 700-int(wy*30)
+            dx = 245+int(wx*30)
+            
         # print("wx: " + str(wx))
         # print("wy: " + str(wy))
         # print(rho)
-        ################ ^ [End] Do not modify ^ ##################
-
-        #print("Rho: %f Alpha: %f rx: %f ry: %f wx: %f wy: %f" % (rho,alpha,rx,ry,wx,wy))
 
         if rho < LIDAR_SENSOR_MAX_RANGE:
             # Part 1.3: visualize map gray values.
@@ -231,8 +239,7 @@ while robot.step(timestep) != -1 and mode != 'planner':
             # display.setColor(0xFFFFFF)
             
             #convert world coordinates into display coordinates
-            dy = 320-int(wy*30)
-            dx = 100+int(wx*30)
+            
                           
             # if dy > 900:
                 # dy = 900
@@ -240,7 +247,8 @@ while robot.step(timestep) != -1 and mode != 'planner':
                 # dx = 480
             # print("dy: " + str(dy))
             # print("dx: " + str(dx))
-            # grayscale code    
+            
+            # Lidar Filter    
             val = map[dx-1][dy-1]
             if val >= 1:
                 val = 1
@@ -314,11 +322,12 @@ while robot.step(timestep) != -1 and mode != 'planner':
     # Odometry code. Don't change vL or vR speeds after this line.
     # We are using GPS and compass for this lab to get a better pose but this is how you'll do the odometry
     if localization_mode == 'odometry':
+        
         pose_x -= (vL+vR)/2/MAX_SPEED*MAX_SPEED_MS*timestep/1000.0*math.cos(pose_theta)
         pose_y -= (vL+vR)/2/MAX_SPEED*MAX_SPEED_MS*timestep/1000.0*math.sin(pose_theta)
         pose_theta += (vR-vL)/AXLE_LENGTH/MAX_SPEED*MAX_SPEED_MS*timestep/1000.0
         display.setColor(int(0xFFF000))
-        display.drawPixel(int(240-pose_x*30),int(700-pose_y*30))
+        display.drawPixel(int(240+pose_x*30),int(700-pose_y*30))
 
     # print("X: %f Z: %f Theta: %f" % (pose_x, pose_y, pose_theta))
 
