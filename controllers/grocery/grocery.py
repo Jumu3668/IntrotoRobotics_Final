@@ -1,11 +1,14 @@
+
 """Final Lab Controller"""
 from controller import Robot, Motor, Camera, RangeFinder, Lidar, Keyboard, Display
+
 import math
 import sys
 import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 from scipy.signal import convolve2d # Uncomment if you want to use something else for finding the configuration space
+
 MAX_SPEED = 7.0  # [rad/s]
 MAX_SPEED_MS = 0.633 # [m/s]
 AXLE_LENGTH = 0.4044 # m
@@ -67,6 +70,10 @@ keyboard.enable(timestep)
 # map the 12x12m2 apartment
 display = robot.getDevice("display")
 
+#set up keybaord call
+keyboard = robot.getKeyboard()
+keyboard.enable(timestep)
+
 # Odometry
 pose_x     = 0
 pose_y     = 0
@@ -88,6 +95,7 @@ map = None
 # mode = 'manual' # Part 1.1: manual mode
 mode = 'manual'
 # mode = 'autonomous'
+
 
 
 
@@ -440,3 +448,4 @@ while robot.step(timestep) != -1 and mode != 'planner':
     # Actuator commands
     robot_parts[MOTOR_LEFT].setVelocity(vL)
     robot_parts[MOTOR_RIGHT].setVelocity(vR)
+
