@@ -6,6 +6,7 @@ import sys
 import numpy as np
 from matplotlib import pyplot as plt
 import time
+
 import matplotlib.patches as patches
 from scipy.signal import convolve2d # Uncomment if you want to use something else for finding the configuration space
 MAX_SPEED = 7.0  # [rad/s]
@@ -145,126 +146,7 @@ if mode == 'planner':
     
     def path_planner(map, start, end):
         #a* search from https://towardsdatascience.com/a-star-a-search-algorithm-eb495fb156bb
-        print("called")
-        '''
-        :param map: A 2D numpy array of size 360x360 representing the world's cspace with 0 as free space and 1 as obstacle
-        :param start: A tuple of indices representing the start cell in the map
-        :param end: A tuple of indices representing the end cell in the map
-        :return: A list of tuples as a path from the given start to the given end in the given maze
-        '''
-        class Node():
-            """A node class for A* Pathfinding"""
-
-            def __init__(self, parent=None, position=None):
-                self.parent = parent
-                self.position = position
-
-                self.distance_from_start = 0
-                self.heuristic = 0
-                self.total_cost = 0
-
-            def __eq__(self, other):
-                return self.position == other.position
-
-
-
-        def shortest_path_grid(grid, start, goal):
-            '''
-            Function that returns the length of the shortest path in a grid
-            that HAS obstacles represented by 1s. The length is simply the number
-            of cells on the path including the 'start' and the 'goal'
-        
-            :param grid: list of lists (represents a square grid where 0 represents free space and 1s obstacles)
-            :param start: tuple of start index
-            :param goal: tuple of goal index
-            :return: length of path
-            '''
-            start_node = Node(None, start)
-        
-            start_node.distance_from_start = 0
-            start_node.heuristic = 0
-            start_node.total_cost = 0
-        
-            goal_node = Node(None, goal)
-        
-            goal_node.distance_from_start = 0
-            goal_node.heuristic = 0
-            goal_node.total_cost = 0
-        
-            open_list = []
-            closed_list = []
-        
-            # Add the start node
-            open_list.append(start_node)
-        
-            # Loop until open list of explorable squares is 0
-            while len(open_list) > 0:
-        
-                current_node = open_list[0]
-                current_index = 0
-                for index, item in enumerate(open_list):
-                    if item.total_cost < current_node.total_cost:
-                        current_node = item
-                        current_index = index
-        
-                # Pop current off open list, add to closed list
-                open_list.pop(current_index)
-                closed_list.append(current_node)
-        
-                # If we find the goal node, return length of path we took
-                if current_node == goal_node:
-                    path = []
-                    current = current_node
-                    while current is not None:
-                        path.append(current.position)
-                        current = current.parent
-                    # return len(path) # Return length of path
-                    return path[::-1]
-                # Generate children
-                children = []
-                for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]: # Adjacent squares
-        
-                    # Get node position
-                    node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
-        
-                    # Make sure node is within range of grid
-                    if node_position[0] > (len(grid) - 1) or node_position[0] < 0 or node_position[1] > (len(grid[len(grid)-1]) -1) or node_position[1] < 0:
-                        continue
-        
-                    # Make sure walkable terrain
-                    if grid[node_position[0]][node_position[1]] != 0:
-                        continue
-        
-                    # Create new node
-                    new_node = Node(current_node, node_position)
-        
-                    # append
-                    children.append(new_node)
-        
-                # Loop through children
-                for child in children:
-        
-                    # Child is on the closed list
-                    for closed_child in closed_list:
-                        if child == closed_child:
-                            continue
-        
-                    # Create heuristic values 
-                    child.distance_from_start = current_node.distance_from_start + 1
-                    child.heuristic = ((child.position[0] - goal_node.position[0]) ** 2) + ((child.position[1] - goal_node.position[1]) ** 2)
-                    child.total_cost = child.distance_from_start + child.heuristic
-        
-                    # Child is already in the open list
-                    for open_node in open_list:
-                        if child == open_node and child.distance_from_start > open_node.distance_from_start:
-                            continue
-        
-                    # Add the child to the open list
-                    open_list.append(child)
-        
-        #if goal cannot be found
-            return -1
-        return shortest_path_grid(map, start, end)
+        pass
 
     # Part 2.1: Load map (map.npy) from disk and visualize it
 
@@ -297,56 +179,57 @@ if mode == 'autonomous':
 state = 0 # use this to iterate through your path
 
 
+# localization_mode = 'gps'
+localization_mode = 'odometry'
 
+print(localization_mode) 
 
 while robot.step(timestep) != -1 and mode != 'planner':
-    
+
     ###################
     #
     # Mapping
     #
     ###################
 
-    ################ v [Begin] Do not modify v ##################
-    # Ground truth pose
-    pose_x = gps.getValues()[2]
-    pose_y = gps.getValues()[0]
-
+    # GPS BASED Ground truth pose
+    
+    if localization_mode == 'gps':
+        pose_x = gps.getValues()[2]
+        pose_y = gps.getValues()[0] 
+        display.setColor(int(0xFF0000))
+        display.drawPixel(int(100+pose_x*30),int(320-pose_y*30))
+        
     n = compass.getValues()
     pose_theta = -((math.atan2(n[0], n[2]))-1.5708)
 
     lidar_sensor_readings = lidar.getRangeImage()
     lidar_sensor_readings = lidar_sensor_readings[83:len(lidar_sensor_readings)-83]
     # print(str(lidar_sensor_readings))
-
+    # print(len(lidar_sensor_readings))
     for i, rho in enumerate(lidar_sensor_readings):
         alpha = lidar_offsets[i] #get current lidar bin position in radians
 
         # rho is single lidar sensor reading at position 'i'
         if rho > LIDAR_SENSOR_MAX_RANGE:
             continue #if rho value too far... skip to next number
-        
-        # print(str(rho))
-        # print(str(i))
-        # The Webots coordinate system doesn't match the robot-centric axes we're used to
-        rx = math.cos(alpha)*rho
-        ry = -math.sin(alpha)*rho
-        # print("ry "+ str(ry))
-        # print("rx "+ str(rx))
-        # print("rho "+ str(rho))
-        # print("alpha " + str(alpha))
-        # print("cosine theta " + str(math.cos(pose_theta)))
-        # print("sine theta " + str(math.sin(pose_theta)))
-        # print("pose_theta " + str(pose_theta))
-        # print("pose_x " + str(pose_x))
 
         # Convert detection from robot coordinates into world coordinates
-        wx =  math.cos(pose_theta)*rx - math.sin(pose_theta)*ry - pose_y
-        wy =  -(math.sin(pose_theta)*rx + math.cos(pose_theta)*ry) + pose_x
-    
-        ################ ^ [End] Do not modify ^ ##################
-
-        #print("Rho: %f Alpha: %f rx: %f ry: %f wx: %f wy: %f" % (rho,alpha,rx,ry,wx,wy))
+        
+        wy = -math.sin(pose_theta - alpha) * rho + pose_y
+        wx = -math.cos(pose_theta - alpha) * rho + pose_x
+        #convert world coordinates into display coordinates
+        if localization_mode == 'gps': 
+            dy = 320-int(wy*30)
+            dx = 100+int(wx*30)
+            
+        if localization_mode == 'odometry':
+            dy = 700-int(wy*30)
+            dx = 245+int(wx*30)
+            
+        # print("wx: " + str(wx))
+        # print("wy: " + str(wy))
+        # print(rho)
 
         if rho < LIDAR_SENSOR_MAX_RANGE:
             # Part 1.3: visualize map gray values.
@@ -354,38 +237,32 @@ while robot.step(timestep) != -1 and mode != 'planner':
             # You will eventually REPLACE the following 2 lines with a more robust version of the map
             # with a grayscale drawing containing more levels than just 0 and 1.
             # display.setColor(0xFFFFFF)
-            # print("wy" + str(wy))
-            # print("wx" + str(wx))
-            wyy = 700-int(wy*30)
-            wxx = 380-int(wx*30)
-            # print("wy: " + str(wyy))
-            # print("wx: " + str(wxx))
+            
+            #convert world coordinates into display coordinates
+            
                           
-            if wyy >= 900 or wxx >= 480:
-
-                if wyy >= 900:
-                    wyy = 900
-                if wxx >= 480:
-                    wxx = 480
-
-            # grayscale code    
-            val = map[wxx-1][wyy-1]
+            # if dy > 900:
+                # dy = 900
+            # if dx > 480:
+                # dx = 480
+            # print("dy: " + str(dy))
+            # print("dx: " + str(dx))
+            
+            # Lidar Filter    
+            val = map[dx-1][dy-1]
             if val >= 1:
                 val = 1
             else:
-                val += 0.005
-                map[wxx-1][wyy-1] = val
+                val += 0.0045
+                map[dx-1][dy-1] = val
             
             g = int(val* 255) # converting [0,1] to grayscale intensity [0,255]
             color = g*256**2+g*256+g
             display.setColor(color)
-            display.drawPixel(wxx,wyy) #draws from the top left corner(0,900)
-            # print("wxx" + str(wxx))
-            # print("wyy" + str(wyy))
+            display.drawPixel(dx,dy) #draws from the top left corner(0,900)
             
     # Draw the robot's current pose on the 360x360 display
-    display.setColor(int(0xFF0000))
-    display.drawPixel(int(100+pose_x*30),int(320-pose_y*30))
+    
     
 
     ###################
@@ -442,16 +319,15 @@ while robot.step(timestep) != -1 and mode != 'planner':
 
     # Odometry code. Don't change vL or vR speeds after this line.
     # We are using GPS and compass for this lab to get a better pose but this is how you'll do the odometry
-    pose_x += (vL+vR)/2/MAX_SPEED*MAX_SPEED_MS*timestep/1000.0*math.cos(pose_theta)
-    pose_y -= (vL+vR)/2/MAX_SPEED*MAX_SPEED_MS*timestep/1000.0*math.sin(pose_theta)
-    pose_theta += (vR-vL)/AXLE_LENGTH/MAX_SPEED*MAX_SPEED_MS*timestep/1000.0
+    if localization_mode == 'odometry':
+        
+        pose_x -= (vL+vR)/2/MAX_SPEED*MAX_SPEED_MS*timestep/1000.0*math.cos(pose_theta)
+        pose_y -= (vL+vR)/2/MAX_SPEED*MAX_SPEED_MS*timestep/1000.0*math.sin(pose_theta)
+        pose_theta += (vR-vL)/AXLE_LENGTH/MAX_SPEED*MAX_SPEED_MS*timestep/1000.0
+        display.setColor(int(0xFFF000))
+        display.drawPixel(int(240+pose_x*30),int(700-pose_y*30))
 
     # print("X: %f Z: %f Theta: %f" % (pose_x, pose_y, pose_theta))
-     ###################
-    #
-    # Manipulation
-    #
-    ###################
     
     item_detected = True
     get_obj_pos = (1.5, -0.25, -1.7, 1.7, 0.0, 0.0, 0.0)
