@@ -189,7 +189,7 @@ localization_mode = 'gps'
 
 print(localization_mode) 
 frame_marker = 0
-
+item_detected = False
 while robot.step(timestep) != -1 and mode != 'planner':
 
     ###################
@@ -299,9 +299,8 @@ while robot.step(timestep) != -1 and mode != 'planner':
             vR = 0
 
         elif kb.is_pressed('t'):
-            print(str(wyy))
-            print(str(wxx))
-            print(str(wtt))
+            item_detected = True
+            print("item detected")
         elif kb.is_pressed('q'):
             # Part 1.4: Filter map and save to filesystem
             savemap = (map > 0.3).astype(int)
@@ -350,13 +349,15 @@ while robot.step(timestep) != -1 and mode != 'planner':
 
     # print("X: %f Z: %f Theta: %f" % (pose_x, pose_y, pose_theta))
     
-    item_detected = True
+    
     tpos_pos_0     = (0.07, 0, -1.7, 0.0, -1.7, 1.39, 1.7)
     scoop_pos_0    = (1.3, -0.15, -1.7, 0.8, -1.7, 1.39, 1.7)
     scoop_pos_1 =    (0.07, 0, -1.4, 2.29, -1.7, 1.39, 1.7)
     #if item_detected:
     print(frame_marker)
-    if frame_marker >= 0 and frame_marker <= 45:
+    
+    #Scoop animation stage 1
+    if frame_marker >= 0 and frame_marker <= 45 and item_detected == True:
         #move arm into position
         robot_parts[3].setPosition(float(tpos_pos_0[0]))
         robot_parts[4].setPosition(float(tpos_pos_0[1]))
@@ -366,8 +367,9 @@ while robot.step(timestep) != -1 and mode != 'planner':
         robot_parts[8].setPosition(float(tpos_pos_0[5]))
         robot_parts[9].setPosition(float(tpos_pos_0[6]))
         
-    if frame_marker > 45 and frame_marker <= 135:
-        print("h")
+    # Scoop animation stage 2   
+    if frame_marker > 45 and frame_marker <= 110 and item_detected == True:
+        # print("h")
         robot_parts[3].setPosition(float(scoop_pos_0[0]))
         robot_parts[4].setPosition(float(scoop_pos_0[1]))
         robot_parts[5].setPosition(float(scoop_pos_0[2]))
@@ -375,9 +377,10 @@ while robot.step(timestep) != -1 and mode != 'planner':
         robot_parts[7].setPosition(float(scoop_pos_0[4]))
         robot_parts[8].setPosition(float(scoop_pos_0[5]))
         robot_parts[9].setPosition(float(scoop_pos_0[6]))
-        
-    if frame_marker > 135:
-        print("k")
+     
+    # Scoop animation stage 3    
+    if frame_marker > 110 and frame_marker <= 170 and item_detected == True:
+        # print("k")
         robot_parts[3].setPosition(float(scoop_pos_1[0]))
         robot_parts[4].setPosition(float(scoop_pos_1[1]))
         robot_parts[5].setPosition(float(scoop_pos_1[2]))
@@ -385,11 +388,26 @@ while robot.step(timestep) != -1 and mode != 'planner':
         robot_parts[7].setPosition(float(scoop_pos_1[4]))
         robot_parts[8].setPosition(float(scoop_pos_1[5]))
         robot_parts[9].setPosition(float(scoop_pos_1[6]))
-            
+    
+    if frame_marker > 170 and frame_marker <= 240:
+        #reverse
+        vL = -MAX_SPEED/2
+        vR = -MAX_SPEED/2
+    # Reset robo arm
+    
+    if frame_marker > 240 and frame_marker <= 290:
+        for i in range(N_PARTS):
+            robot_parts[i].setPosition(float(target_pos[i]))
+       
+    if frame_marker > 290: #animation complete. Reset Vars
+        item_detected = False
+        frame_marker = 0        
     # Actuator commands
     robot_parts[MOTOR_LEFT].setVelocity(vL)
     robot_parts[MOTOR_RIGHT].setVelocity(vR)
-    frame_marker+=1
+    
+    if item_detected == True:
+        frame_marker+=1
 
 
 
