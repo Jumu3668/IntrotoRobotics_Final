@@ -1,4 +1,4 @@
-"""Final Lab Controller"""
+"""lab5 controller."""
 from controller import Robot, Motor, Camera, RangeFinder, Lidar, Keyboard, Display
 import math
 import sys
@@ -316,7 +316,7 @@ while robot.step(timestep) != -1 and mode != 'planner':
     lidar_sensor_readings = lidar.getRangeImage()
     lidar_sensor_readings = lidar_sensor_readings[83:len(lidar_sensor_readings)-83]
     # print(str(lidar_sensor_readings))
-    print(len(lidar_sensor_readings))
+
     for i, rho in enumerate(lidar_sensor_readings):
         alpha = lidar_offsets[i] #get current lidar bin position in radians
 
@@ -324,18 +324,24 @@ while robot.step(timestep) != -1 and mode != 'planner':
         if rho > LIDAR_SENSOR_MAX_RANGE:
             continue #if rho value too far... skip to next number
         
+        # print(str(rho))
+        # print(str(i))
         # The Webots coordinate system doesn't match the robot-centric axes we're used to
-        # rx = math.cos(alpha)*rho
-        # ry = -math.sin(alpha)*rho
+        rx = math.cos(alpha)*rho
+        ry = -math.sin(alpha)*rho
+        # print("ry "+ str(ry))
+        # print("rx "+ str(rx))
+        # print("rho "+ str(rho))
+        # print("alpha " + str(alpha))
+        # print("cosine theta " + str(math.cos(pose_theta)))
+        # print("sine theta " + str(math.sin(pose_theta)))
+        # print("pose_theta " + str(pose_theta))
+        # print("pose_x " + str(pose_x))
 
         # Convert detection from robot coordinates into world coordinates
-        wx = -math.cos(pose_theta - alpha) * rho + pose_x
-        wy = -math.sin(pose_theta - alpha) * rho + pose_y
-        # wx =  math.cos(pose_theta)*rx - math.sin(pose_theta)*ry + pose_x
-        # wy =  -(math.sin(pose_theta)*rx + math.cos(pose_theta)*ry) + pose_y
-        # print("wx: " + str(wx))
-        # print("wy: " + str(wy))
-        # print(rho)
+        wx =  math.cos(pose_theta)*rx - math.sin(pose_theta)*ry - pose_y
+        wy =  -(math.sin(pose_theta)*rx + math.cos(pose_theta)*ry) + pose_x
+    
         ################ ^ [End] Do not modify ^ ##################
 
         #print("Rho: %f Alpha: %f rx: %f ry: %f wx: %f wy: %f" % (rho,alpha,rx,ry,wx,wy))
@@ -346,29 +352,34 @@ while robot.step(timestep) != -1 and mode != 'planner':
             # You will eventually REPLACE the following 2 lines with a more robust version of the map
             # with a grayscale drawing containing more levels than just 0 and 1.
             # display.setColor(0xFFFFFF)
-            
-            #convert world coordinates into display coordinates
-            dy = 320-int(wy*30)
-            dx = 100+int(wx*30)
+            # print("wy" + str(wy))
+            # print("wx" + str(wx))
+            wyy = 900-int(wy*30)
+            wxx = int(wx*30)
+            # print("wy: " + str(wyy))
+            # print("wx: " + str(wxx))
                           
-            # if dy > 900:
-                # dy = 900
-            # if dx > 480:
-                # dx = 480
-            # print("dy: " + str(dy))
-            # print("dx: " + str(dx))
+            if wyy >= 900 or wxx >= 480:
+
+                if wyy >= 900:
+                    wyy = 900
+                if wxx >= 480:
+                    wxx = 480
+
             # grayscale code    
-            val = map[dx-1][dy-1]
+            val = map[wxx-1][wyy-1]
             if val >= 1:
                 val = 1
             else:
-                val += 0.0045
-                map[dx-1][dy-1] = val
+                val += 0.005
+                map[wxx-1][wyy-1] = val
             
             g = int(val* 255) # converting [0,1] to grayscale intensity [0,255]
             color = g*256**2+g*256+g
             display.setColor(color)
-            display.drawPixel(dx,dy) #draws from the top left corner(0,900)
+            display.drawPixel(wxx,wyy) #draws from the top left corner(0,900)
+            # print("wxx" + str(wxx))
+            # print("wyy" + str(wyy))
             
     # Draw the robot's current pose on the 360x360 display
     display.setColor(int(0xFF0000))
