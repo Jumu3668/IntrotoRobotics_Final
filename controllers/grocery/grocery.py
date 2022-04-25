@@ -36,7 +36,7 @@ part_names = ("head_2_joint", "head_1_joint", "torso_lift_joint", "arm_1_joint",
 
 # All motors except the wheels are controlled by position control. The wheels
 # are controlled by a velocity controller. We therefore set their position to infinite.
-target_pos = (0.0, 0.0, 0.09, 0.07, 1.02, -3.16, 1.27, 1.32, 0.0, 1.41, 'inf', 'inf')
+target_pos = (0.0, 0.0, 0, 0.07, 1.02, -3.16, 1.27, 1.32, 0.0, 1.41, 'inf', 'inf')
 robot_parts=[]
 
 for i in range(N_PARTS):
@@ -69,6 +69,11 @@ keyboard.enable(timestep)
 # The display is used to display the map. We are using 480x900 pixels to
 # map the 12x12m2 apartment
 display = robot.getDevice("display")
+
+# Enable Camera
+camera = robot.getDevice('camera')
+camera.enable(timestep)
+camera.recognitionEnable(timestep)
 
 # Odometry
 pose_x     = 0
@@ -179,10 +184,11 @@ if mode == 'autonomous':
 state = 0 # use this to iterate through your path
 
 
-# localization_mode = 'gps'
-localization_mode = 'odometry'
+localization_mode = 'gps'
+# localization_mode = 'odometry'
 
 print(localization_mode) 
+frame_marker = 0
 
 while robot.step(timestep) != -1 and mode != 'planner':
 
@@ -193,12 +199,14 @@ while robot.step(timestep) != -1 and mode != 'planner':
     ###################
 
     # GPS BASED Ground truth pose
-    
+    wxx = 0
+    wyy = 0
+    wtt = 0
     if localization_mode == 'gps':
         pose_x = gps.getValues()[2]
         pose_y = gps.getValues()[0] 
         display.setColor(int(0xFF0000))
-        display.drawPixel(int(100+pose_x*30),int(320-pose_y*30))
+        display.drawPixel(int(115+pose_x*30),int(290-pose_y*30))
         
     n = compass.getValues()
     pose_theta = -((math.atan2(n[0], n[2]))-1.5708)
@@ -218,10 +226,13 @@ while robot.step(timestep) != -1 and mode != 'planner':
         
         wy = -math.sin(pose_theta - alpha) * rho + pose_y
         wx = -math.cos(pose_theta - alpha) * rho + pose_x
+        wxx = pose_x
+        wyy = pose_y
+        wtt = pose_theta
         #convert world coordinates into display coordinates
         if localization_mode == 'gps': 
-            dy = 320-int(wy*30)
-            dx = 100+int(wx*30)
+            dy = 290-int(wy*30)
+            dx = 115+int(wx*30)
             
         if localization_mode == 'odometry':
             dy = 700-int(wy*30)
@@ -241,10 +252,10 @@ while robot.step(timestep) != -1 and mode != 'planner':
             #convert world coordinates into display coordinates
             
                           
-            # if dy > 900:
-                # dy = 900
-            # if dx > 480:
-                # dx = 480
+            if dy >= 900:
+                dy = 900
+            if dx >= 480:
+                dx = 480
             # print("dy: " + str(dy))
             # print("dx: " + str(dx))
             
@@ -286,7 +297,12 @@ while robot.step(timestep) != -1 and mode != 'planner':
         elif kb.is_pressed(' '):
             vL = 0
             vR = 0
-        elif kb.is_pressed('s'):
+
+        elif kb.is_pressed('t'):
+            print(str(wyy))
+            print(str(wxx))
+            print(str(wtt))
+        elif kb.is_pressed('q'):
             # Part 1.4: Filter map and save to filesystem
             savemap = (map > 0.3).astype(int)
             np.save('map', savemap)
@@ -294,7 +310,12 @@ while robot.step(timestep) != -1 and mode != 'planner':
         elif kb.is_pressed('l'):
             # You will not use this portion in Part 1 but here's an example for loading saved a numpy array
             map = np.load("map.npy")
+            map = np.rot90(map, 3)
+            map = np.fliplr(map)
+            plt.imshow(map)
+            plt.show()
             print("Map loaded")
+               
         else: # slow down
             vL *= 0.75
             vR *= 0.75
@@ -330,37 +351,45 @@ while robot.step(timestep) != -1 and mode != 'planner':
     # print("X: %f Z: %f Theta: %f" % (pose_x, pose_y, pose_theta))
     
     item_detected = True
-    get_obj_pos = (1.5, -0.25, -1.7, 1.7, 0.0, 0.0, 0.0)
-    drag_obj_pos = (1.5, -0.5, -1.7, 1.7, 0.0, 0.0, 0.0)
-    res_arm_pos = (0.07, 1.02, -3.16, 1.27, 1.32, 0.0, 1.41)
+    tpos_pos_0     = (0.07, 0, -1.7, 0.0, -1.7, 1.39, 1.7)
+    scoop_pos_0    = (1.3, -0.15, -1.7, 0.8, -1.7, 1.39, 1.7)
+    scoop_pos_1 =    (0.07, 0, -1.4, 2.29, -1.7, 1.39, 1.7)
     #if item_detected:
-    if kb.is_pressed("g"):
+    print(frame_marker)
+    if frame_marker >= 0 and frame_marker <= 45:
         #move arm into position
-        robot_parts[3].setPosition(float(get_obj_pos[0]))
-        robot_parts[4].setPosition(float(get_obj_pos[1]))
-        robot_parts[5].setPosition(float(get_obj_pos[2]))
-        robot_parts[6].setPosition(float(get_obj_pos[3]))
-        robot_parts[7].setPosition(float(get_obj_pos[4]))
-        robot_parts[8].setPosition(float(get_obj_pos[5]))
-        robot_parts[9].setPosition(float(get_obj_pos[6]))
+        robot_parts[3].setPosition(float(tpos_pos_0[0]))
+        robot_parts[4].setPosition(float(tpos_pos_0[1]))
+        robot_parts[5].setPosition(float(tpos_pos_0[2]))
+        robot_parts[6].setPosition(float(tpos_pos_0[3]))
+        robot_parts[7].setPosition(float(tpos_pos_0[4]))
+        robot_parts[8].setPosition(float(tpos_pos_0[5]))
+        robot_parts[9].setPosition(float(tpos_pos_0[6]))
         
-    if kb.is_pressed("p"): #drag object into basket
-        robot_parts[3].setPosition(float(drag_obj_pos[0]))
-        robot_parts[4].setPosition(float(drag_obj_pos[1]))
-        robot_parts[5].setPosition(float(drag_obj_pos[2]))
-        robot_parts[6].setPosition(float(drag_obj_pos[3]))
-        robot_parts[7].setPosition(float(drag_obj_pos[4]))
-        robot_parts[8].setPosition(float(drag_obj_pos[5]))
-        robot_parts[9].setPosition(float(drag_obj_pos[6]))
+    if frame_marker > 45 and frame_marker <= 135:
+        print("h")
+        robot_parts[3].setPosition(float(scoop_pos_0[0]))
+        robot_parts[4].setPosition(float(scoop_pos_0[1]))
+        robot_parts[5].setPosition(float(scoop_pos_0[2]))
+        robot_parts[6].setPosition(float(scoop_pos_0[3]))
+        robot_parts[7].setPosition(float(scoop_pos_0[4]))
+        robot_parts[8].setPosition(float(scoop_pos_0[5]))
+        robot_parts[9].setPosition(float(scoop_pos_0[6]))
         
-    if kb.is_pressed("r"):
-        robot_parts[3].setPosition(float(res_arm_pos[0]))
-        robot_parts[4].setPosition(float(res_arm_pos[1]))
-        robot_parts[5].setPosition(float(res_arm_pos[2]))
-        robot_parts[6].setPosition(float(res_arm_pos[3]))
-        robot_parts[7].setPosition(float(res_arm_pos[4]))
-        robot_parts[8].setPosition(float(res_arm_pos[5]))
-        robot_parts[9].setPosition(float(res_arm_pos[6]))
+    if frame_marker > 135:
+        print("k")
+        robot_parts[3].setPosition(float(scoop_pos_1[0]))
+        robot_parts[4].setPosition(float(scoop_pos_1[1]))
+        robot_parts[5].setPosition(float(scoop_pos_1[2]))
+        robot_parts[6].setPosition(float(scoop_pos_1[3]))
+        robot_parts[7].setPosition(float(scoop_pos_1[4]))
+        robot_parts[8].setPosition(float(scoop_pos_1[5]))
+        robot_parts[9].setPosition(float(scoop_pos_1[6]))
+            
     # Actuator commands
     robot_parts[MOTOR_LEFT].setVelocity(vL)
     robot_parts[MOTOR_RIGHT].setVelocity(vR)
+    frame_marker+=1
+
+
+
