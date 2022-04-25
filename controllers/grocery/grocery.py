@@ -1,9 +1,12 @@
-"""Final Lab Controller"""
-from controller import Robot, Motor, Camera, RangeFinder, Lidar, Keyboard, Display
+"""lab5 controller."""
+from controller import Robot, Motor, Camera, RangeFinder, Lidar, Display
 import math
+import keyboard as kb
 import sys
 import numpy as np
 from matplotlib import pyplot as plt
+import time
+
 import matplotlib.patches as patches
 from scipy.signal import convolve2d # Uncomment if you want to use something else for finding the configuration space
 MAX_SPEED = 7.0  # [rad/s]
@@ -143,9 +146,6 @@ if mode == 'planner':
     
     def path_planner(map, start, end):
         #a* search from https://towardsdatascience.com/a-star-a-search-algorithm-eb495fb156bb
-        
-
-
         pass
 
     # Part 2.1: Load map (map.npy) from disk and visualize it
@@ -271,29 +271,27 @@ while robot.step(timestep) != -1 and mode != 'planner':
     #
     ###################
     if mode == 'manual':
-        key = keyboard.getKey()
-        while(keyboard.getKey() != -1): pass
-        if key == keyboard.LEFT :
+        if kb.is_pressed("a") :
             vL = -MAX_SPEED
             vR = MAX_SPEED
-        elif key == keyboard.RIGHT:
+        elif kb.is_pressed("d"):
             vL = MAX_SPEED
             vR = -MAX_SPEED
-        elif key == keyboard.UP:
+        elif kb.is_pressed("w"):
             vL = MAX_SPEED
             vR = MAX_SPEED
-        elif key == keyboard.DOWN:
+        elif kb.is_pressed("s"):
             vL = -MAX_SPEED
             vR = -MAX_SPEED
-        elif key == ord(' '):
+        elif kb.is_pressed(' '):
             vL = 0
             vR = 0
-        elif key == ord('S'):
+        elif kb.is_pressed('s'):
             # Part 1.4: Filter map and save to filesystem
             savemap = (map > 0.3).astype(int)
             np.save('map', savemap)
             print("Map file saved")
-        elif key == ord('L'):
+        elif kb.is_pressed('l'):
             # You will not use this portion in Part 1 but here's an example for loading saved a numpy array
             map = np.load("map.npy")
             print("Map loaded")
@@ -330,7 +328,39 @@ while robot.step(timestep) != -1 and mode != 'planner':
         display.drawPixel(int(240+pose_x*30),int(700-pose_y*30))
 
     # print("X: %f Z: %f Theta: %f" % (pose_x, pose_y, pose_theta))
-
+    
+    item_detected = True
+    get_obj_pos = (1.5, -0.25, -1.7, 1.7, 0.0, 0.0, 0.0)
+    drag_obj_pos = (1.5, -0.5, -1.7, 1.7, 0.0, 0.0, 0.0)
+    res_arm_pos = (0.07, 1.02, -3.16, 1.27, 1.32, 0.0, 1.41)
+    #if item_detected:
+    if kb.is_pressed("g"):
+        #move arm into position
+        robot_parts[3].setPosition(float(get_obj_pos[0]))
+        robot_parts[4].setPosition(float(get_obj_pos[1]))
+        robot_parts[5].setPosition(float(get_obj_pos[2]))
+        robot_parts[6].setPosition(float(get_obj_pos[3]))
+        robot_parts[7].setPosition(float(get_obj_pos[4]))
+        robot_parts[8].setPosition(float(get_obj_pos[5]))
+        robot_parts[9].setPosition(float(get_obj_pos[6]))
+        
+    if kb.is_pressed("p"): #drag object into basket
+        robot_parts[3].setPosition(float(drag_obj_pos[0]))
+        robot_parts[4].setPosition(float(drag_obj_pos[1]))
+        robot_parts[5].setPosition(float(drag_obj_pos[2]))
+        robot_parts[6].setPosition(float(drag_obj_pos[3]))
+        robot_parts[7].setPosition(float(drag_obj_pos[4]))
+        robot_parts[8].setPosition(float(drag_obj_pos[5]))
+        robot_parts[9].setPosition(float(drag_obj_pos[6]))
+        
+    if kb.is_pressed("r"):
+        robot_parts[3].setPosition(float(res_arm_pos[0]))
+        robot_parts[4].setPosition(float(res_arm_pos[1]))
+        robot_parts[5].setPosition(float(res_arm_pos[2]))
+        robot_parts[6].setPosition(float(res_arm_pos[3]))
+        robot_parts[7].setPosition(float(res_arm_pos[4]))
+        robot_parts[8].setPosition(float(res_arm_pos[5]))
+        robot_parts[9].setPosition(float(res_arm_pos[6]))
     # Actuator commands
     robot_parts[MOTOR_LEFT].setVelocity(vL)
     robot_parts[MOTOR_RIGHT].setVelocity(vR)
