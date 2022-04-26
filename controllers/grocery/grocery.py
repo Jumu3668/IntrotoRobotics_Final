@@ -408,12 +408,16 @@ while robot.step(timestep) != -1 and mode != 'planner':
 
     # print("X: %f Z: %f Theta: %f" % (pose_x, pose_y, pose_theta))
     
-    
+    ####################
+    #
+    # Manipulation
+    #
+    ####################
     tpos_pos_0     = (0.07, 0, -1.7, 0.0, -1.7, 1.39, 1.7)
     scoop_pos_0    = (1.3, -0.15, -1.7, 0.8, -1.7, 1.39, 1.7)
     scoop_pos_1 =    (0.07, 0, -1.4, 2.29, -1.7, 1.39, 1.7)
     #if item_detected:
-    print(frame_marker)
+    # print(frame_marker)
     
     #Scoop animation stage 1
     if frame_marker >= 0 and frame_marker <= 45 and item_detected == True:
@@ -468,5 +472,26 @@ while robot.step(timestep) != -1 and mode != 'planner':
     if item_detected == True:
         frame_marker+=1
 
-
-
+    #########################
+    #
+    # Computer Vision
+    #
+    #########################
+    
+    camera.saveImage("image.png", 50)
+    camera.getImage()
+    width = camera.getWidth()
+    height = camera.getHeight()
+    image = camera.getImage()
+    for i in range(0,width):
+        for j in range(0,height):
+            g = camera.imageGetGreen(image, width, i, j)
+            r = camera.imageGetRed(image, width, i, j)
+            b = camera.imageGetBlue(image, width, i, j)
+            # print("hello")
+    
+    
+    
+    
+    
+    
