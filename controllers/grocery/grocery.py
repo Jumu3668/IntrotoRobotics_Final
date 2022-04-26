@@ -94,10 +94,69 @@ map = None
 ##################### IMPORTANT #####################
 # Set the mode here. Please change to 'autonomous' before submission
 # mode = 'manual' # Part 1.1: manual mode
-mode = 'manual'
+#rrt testing
+mode = 'planner'
 # mode = 'autonomous'
 
-
+###################
+#
+# RRT
+#
+###################
+#rrt in pixel coordnates 
+#define above to convert pixel coordnates to global coordniates
+def rrt(start_pt, end_pt, map):
+    #check pixels, modify to go faster
+    delta_q = 1
+    #checks single coord is valid
+    def valid(pt):
+        #(map[int(pt[0])][int(pt[1])])
+        return not map[int(pt[0])][int(pt[1])]
+    #every tuple has coord, index of parent
+    explored = [(start_pt, None)]
+    #print(explored)
+    for n in range(10000):
+        #random coord within map's rows and columns
+        q_rand = (np.random.randint(len(map)), np.random.randint(len(map[0])))
+        #0.05 chance to test if at end point
+        if np.random.rand() < 0.05:
+            q_rand = end_pt
+        #closest to q_rand
+        closest_index = -1
+        closest_dist = float("inf")
+        #finds the closest point
+        for i in range(len(explored)):
+            pt = explored[i][0]
+            #eucidean distance
+            dist = ((q_rand[0] - pt[0]) ** 2+ (q_rand[1] - pt[1]) ** 2) ** 0.5
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_index = i
+        #path is valid
+        isValid = True
+        closest_pt = explored[closest_index][0]
+        #checks every point along the line between closest pt and q_rand
+        for i in np.arange(0, closest_dist, delta_q):
+            p = i  / closest_dist
+            if not valid((closest_pt[0] + p * (q_rand[1] - closest_pt[0]), closest_pt[1] + p * (q_rand[1] - closest_pt[1]))):
+                isValid = False
+                break
+        if isValid:
+            #adds a tuple to the explored array
+            explored.append((q_rand, closest_index))
+            #checks within one pixel of the goal
+            dist = ((q_rand[0] - end_pt[0]) ** 2+ (q_rand[1] - end_pt[1]) ** 2) ** 0.5
+            if dist < 1:
+                #print(explored)
+                path = [q_rand]
+                c = explored[len(explored) - 1]
+                #unrolls path using parent pointer
+                while not c[1] is None:
+                    c = explored[c[1]]
+                    path.insert(0, c[0])
+                return path
+    #print(explored)
+    return -1 
 
 
 ###################
@@ -111,7 +170,7 @@ if mode == 'planner':
     #map = np.fliplr(map)
     map = np.rot90(map, 3)
     plt.imshow(map)
-    print(map)
+    #print(map)
     plt.show()
     kernel_size = 12
     Kernel = np.ones((kernel_size, kernel_size))
@@ -127,7 +186,7 @@ if mode == 'planner':
                 #12-16 pixels
                                                         
                 # draw box around 
-    print(pixels)
+    #print(pixels)
     np.set_printoptions(threshold=sys.maxsize)
     # print(Convolved_map.reshape(360,360).tolist())
     plt.imshow(Convolved_map)
@@ -145,13 +204,13 @@ if mode == 'planner':
     # start = (167,185)
     print(str(start))
     print(str(end))
+    start = (200, 200)
+    end = (300, 200)
     # end = (293, 316)
     # print("test")
     # Part 2.3: Implement A* or Dijkstra's Algorithm to find a path
-    
-    def path_planner(map, start, end):
-        #a* search from https://towardsdatascience.com/a-star-a-search-algorithm-eb495fb156bb
-        pass
+    #rrt testing 
+    print(rrt(start, end, Convolved_map))
 
     # Part 2.1: Load map (map.npy) from disk and visualize it
 
@@ -160,9 +219,9 @@ if mode == 'planner':
 
 
     # Part 2.3 continuation: Call path_planner
-    map = map.tolist()
-    stuff = path_planner(map, start, end)
-    print(stuff)
+    # map = map.tolist()
+    # stuff = path_planner(map, start, end)
+    # print(stuff)
     # Part 2.4: Turn paths into waypoints and save on disk as path.npy and visualize it
     waypoints = []
 
