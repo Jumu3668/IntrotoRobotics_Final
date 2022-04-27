@@ -76,12 +76,17 @@ camera.enable(timestep)
 camera.recognitionEnable(timestep)
 
 # Odometry
+
+localization_mode = 'gps'
+# localization_mode = 'odometry'
+
 pose_x     = 0
 pose_y     = 0
 pose_theta = 0
 
 vL = 0
 vR = 0
+
 
 lidar_sensor_readings = [] # List to hold sensor readings
 lidar_offsets = np.linspace(-LIDAR_ANGLE_RANGE/2., +LIDAR_ANGLE_RANGE/2., LIDAR_ANGLE_BINS) #position in radians of all lidar bins on robot
@@ -93,9 +98,10 @@ map = None
 
 ##################### IMPORTANT #####################
 # Set the mode here. Please change to 'autonomous' before submission
-# mode = 'manual' # Part 1.1: manual mode
 #rrt testing
-mode = 'planner'
+
+mode = 'manual' # Part 1.1: manual mode
+# mode = 'planner'
 # mode = 'autonomous'
 
 ###################
@@ -103,6 +109,49 @@ mode = 'planner'
 # RRT
 #
 ###################
+#  green cube pickup coordinates WHITE SHELVES  
+#     wx,wy,wtt
+waypoints = [(8.11796,-7.76351,3.14174),
+            (8.129499, -1.490345,3.141773),
+            (8.1800349,-3.49444,-0.001),
+            (12.12526,-2.4653599,3.14034),
+            (4.1244388, -2.509675, 3.1414869),
+            (4.1303769, 0.41514208, 3.141649),
+            (0.901962, 3.33814055, 0.0004155),
+            (0.9239285, -2.739372, -0.00824976),
+            (0.134933779,0.3488725640,3.1284947),
+            (0.13583087,2.142451,3.1260417)]
+
+display_waypoints = []
+temp_list = []
+
+#convert to display coordinates from world coordinates in waypoint list
+for coord in waypoints:
+    counter=0
+    temp_list = []
+    for i, element in enumerate(coord):
+        # print(element)
+        
+        if localization_mode == 'odometry':
+            if i == 0: #x value
+                temp_list.append(245+int(element*30))
+            if i == 1: #y value
+                temp_list.append(700-int(element*30))
+            
+        if localization_mode == 'gps':
+            if i == 0: #x value
+                temp_list.append(115+int(element*30))
+            if i == 1: #y value
+                temp_list.append(290-int(element*30))
+
+        if i == 2:
+            temp_list.append(element)
+
+    display_waypoints.append(tuple(temp_list)) 
+
+# print(display_waypoints)
+
+
 #rrt in pixel coordnates 
 #define above to convert pixel coordnates to global coordniates
 def rrt(start_pt, end_pt, map):
@@ -167,7 +216,7 @@ def rrt(start_pt, end_pt, map):
 if mode == 'planner':
     map = np.load('map.npy')
     pixels = 0
-    #map = np.fliplr(map)
+    map = np.flipud(map)
     map = np.rot90(map, 3)
     plt.imshow(map)
     #print(map)
@@ -243,8 +292,6 @@ if mode == 'autonomous':
 state = 0 # use this to iterate through your path
 
 
-localization_mode = 'gps'
-# localization_mode = 'odometry'
 
 print(localization_mode) 
 frame_marker = 0
@@ -288,6 +335,9 @@ while robot.step(timestep) != -1 and mode != 'planner':
         wxx = pose_x
         wyy = pose_y
         wtt = pose_theta
+        # print("wx: " + str(wx))
+        # print("wy: " + str(wy))
+        # print("wtt: " + str(wtt))
         #convert world coordinates into display coordinates
         if localization_mode == 'gps': 
             dy = 290-int(wy*30)
@@ -489,9 +539,4 @@ while robot.step(timestep) != -1 and mode != 'planner':
             r = camera.imageGetRed(image, width, i, j)
             b = camera.imageGetBlue(image, width, i, j)
             # print("hello")
-    
-    
-    
-    
-    
     
