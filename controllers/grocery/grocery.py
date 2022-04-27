@@ -109,9 +109,9 @@ mode = 'manual' # Part 1.1: manual mode
 # RRT
 #
 ###################
-#  green cube pickup coordinates WHITE SHELVES  
-#     wx,wy,wtt
-waypoints = [(8.11796,-7.76351,3.14174),
+#  green cube pickup world coordinates WHITE SHELVES  
+#   ordered in (wx, wy, wtt)
+cube_waypoints = [(8.11796,-7.76351,3.14174),
             (8.129499, -1.490345,3.141773),
             (8.1800349,-3.49444,-0.001),
             (12.12526,-2.4653599,3.14034),
@@ -121,12 +121,14 @@ waypoints = [(8.11796,-7.76351,3.14174),
             (0.9239285, -2.739372, -0.00824976),
             (0.134933779,0.3488725640,3.1284947),
             (0.13583087,2.142451,3.1260417)]
+            
+robot_start_pos = (6.39358,-13.4795099,4.71195)
 
 display_waypoints = []
 temp_list = []
 
 #convert to display coordinates from world coordinates in waypoint list
-for coord in waypoints:
+for coord in cube_waypoints:
     counter=0
     temp_list = []
     for i, element in enumerate(coord):
@@ -154,12 +156,16 @@ for coord in waypoints:
 
 #rrt in pixel coordnates 
 #define above to convert pixel coordnates to global coordniates
+
 def rrt(start_pt, end_pt, map):
     #check pixels, modify to go faster
     delta_q = 1
     #checks single coord is valid
     def valid(pt):
         #(map[int(pt[0])][int(pt[1])])
+        # print(pt)
+        if pt[0] > 480:
+            return not map[479][int(pt[1])]
         return not map[int(pt[0])][int(pt[1])]
     #every tuple has coord, index of parent
     explored = [(start_pt, None)]
@@ -288,7 +294,7 @@ waypoints = []
 if mode == 'autonomous':
     # Part 3.1: Load path from disk and visualize it
     waypoints = [] # Replace with code to load your path
-
+    
 state = 0 # use this to iterate through your path
 
 
@@ -335,9 +341,9 @@ while robot.step(timestep) != -1 and mode != 'planner':
         wxx = pose_x
         wyy = pose_y
         wtt = pose_theta
-        # print("wx: " + str(wx))
-        # print("wy: " + str(wy))
-        # print("wtt: " + str(wtt))
+        print("wx: " + str(wx))
+        print("wy: " + str(wy))
+        print("wtt: " + str(wtt))
         #convert world coordinates into display coordinates
         if localization_mode == 'gps': 
             dy = 290-int(wy*30)
@@ -382,6 +388,24 @@ while robot.step(timestep) != -1 and mode != 'planner':
             display.drawPixel(dx,dy) #draws from the top left corner(0,900)
             
     # Draw the robot's current pose on the 360x360 display
+    
+    ##################
+    #
+    # RRT
+    #
+    ##################
+    print("RRT")
+    print(rrt(robot_start_pos, cube_waypoints[0], map))
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
 
