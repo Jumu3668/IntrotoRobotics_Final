@@ -156,18 +156,61 @@ for coord in cube_waypoints:
 
 #rrt in pixel coordnates 
 #define above to convert pixel coordnates to global coordniates
+def setup_random_2d_world(map):
+    '''
+    Function that sets a 2D world with fixed bounds and # of obstacles
+    :return: The bounds, the obstacles, the state_is_valid() function
+    '''
+    state_bounds = np.array([[0,480],[0,900]]) # matrix of min/max values for each dimension
+    obstacles = [] # [pt, radius] circular obstacles
+    rows, cols = map.shape
+    for row in rows:
+        for cols in cols:
+            if map[row][col] == 1:
+                obstacles.append([row,cols], 1)
+    
+    # for n in range(30):
+    #     obstacles.append(get_nd_obstacle(state_bounds))
 
+    def state_is_valid(state):
+        '''
+        Function that takes an n-dimensional point and checks if it is within the bounds and not inside the obstacle
+        :param state: n-Dimensional point
+        :return: Boolean whose value depends on whether the state/point is valid or not
+        '''
+        for dim in range(state_bounds.shape[0]):
+            if state[dim] < state_bounds[dim][0]: return False
+            if state[dim] >= state_bounds[dim][1]: return False
+        for obs in obstacles:
+            if np.linalg.norm(state - obs[0]) <= obs[1]: return False
+        return True
+
+    return state_bounds, obstacles, state_is_valid
+
+setup_random_2d_world(map)
+def check_path_valid(path, state_is_valid):
+    '''
+    Function that checks if a path (or edge that is made up of waypoints) is collision free or not
+    :param path: A 1D array containing a few (10 in our case) n-dimensional points along an edge
+    :param state_is_valid: Function that takes an n-dimensional point and checks if it is valid
+    :return: Boolean based on whether the path is collision free or not
+    '''
+    class vars:
+        v_path = False #boolean to check the path validity
+        length = len(path) #length value for the while loop    
+        count = 0 #iterator value for the while loop
+    while vars.count < vars.length: #while count is less than the length of path
+        if not state_is_valid(path[vars.count]): #check if path passes the given state_is_valid function
+            vars.v_path = True #we update path validity to be true
+        vars.count = vars.count + 1 #increse step in while loop
+
+    return vars.v_path #return if the path is valid or not
+    
 def rrt(start_pt, end_pt, map):
     #check pixels, modify to go faster
     delta_q = 0.5
     #checks single coord is valid
-    def valid(pt):
-        #(map[int(pt[0])][int(pt[1])])
-        # print(pt)
-        # if pt[0] > 480:
-            # return not map[479][int(pt[1])]
-        # print(pt)
-        return not map[int(pt[0])][int(pt[1])]
+    
     #every tuple has coord, index of parent
     explored = [(start_pt, None)]
     #print(explored)
