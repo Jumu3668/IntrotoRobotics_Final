@@ -111,18 +111,18 @@ mode = 'manual' # Part 1.1: manual mode
 ###################
 #  green cube pickup world coordinates WHITE SHELVES  
 #   ordered in (wx, wy, wtt)
-cube_waypoints = [(8.11796,-7.76351,3.14174),
-            (8.129499, -1.490345,3.141773),
-            (8.1800349,-3.49444,-0.001),
-            (12.12526,-2.4653599,3.14034),
-            (4.1244388, -2.509675, 3.1414869),
-            (4.1303769, 0.41514208, 3.141649),
-            (0.901962, 3.33814055, 0.0004155),
-            (0.9239285, -2.739372, -0.00824976),
-            (0.134933779,0.3488725640,3.1284947),
-            (0.13583087,2.142451,3.1260417)]
+cube_waypoints = [(6.39358,-13.4795099,4.71195),
+                (8.11796,-7.76351,3.14174),
+                (8.129499, -1.490345,3.141773),
+                (8.1800349,-3.49444,-0.001),
+                (12.12526,-2.4653599,3.14034),
+                (4.1244388, -2.509675, 3.1414869),
+                (4.1303769, 0.41514208, 3.141649),
+                (0.901962, 3.33814055, 0.0004155),
+                (0.9239285, -2.739372, -0.00824976),
+                (0.134933779,0.3488725640,3.1284947),
+                (0.13583087,2.142451,3.1260417)]
             
-robot_start_pos = (6.39358,-13.4795099,4.71195)
 
 display_waypoints = []
 temp_list = []
@@ -159,13 +159,14 @@ for coord in cube_waypoints:
 
 def rrt(start_pt, end_pt, map):
     #check pixels, modify to go faster
-    delta_q = 1
+    delta_q = 0.5
     #checks single coord is valid
     def valid(pt):
         #(map[int(pt[0])][int(pt[1])])
         # print(pt)
-        if pt[0] > 480:
-            return not map[479][int(pt[1])]
+        # if pt[0] > 480:
+            # return not map[479][int(pt[1])]
+        # print(pt)
         return not map[int(pt[0])][int(pt[1])]
     #every tuple has coord, index of parent
     explored = [(start_pt, None)]
@@ -173,6 +174,7 @@ def rrt(start_pt, end_pt, map):
     for n in range(10000):
         #random coord within map's rows and columns
         q_rand = (np.random.randint(len(map)), np.random.randint(len(map[0])))
+        # print(q_rand)
         #0.05 chance to test if at end point
         if np.random.rand() < 0.05:
             q_rand = end_pt
@@ -193,7 +195,8 @@ def rrt(start_pt, end_pt, map):
         #checks every point along the line between closest pt and q_rand
         for i in np.arange(0, closest_dist, delta_q):
             p = i  / closest_dist
-            if not valid((closest_pt[0] + p * (q_rand[1] - closest_pt[0]), closest_pt[1] + p * (q_rand[1] - closest_pt[1]))):
+            # print(p)
+            if not valid((closest_pt[0] + p * (q_rand[0] - closest_pt[0]), closest_pt[1] + p * (q_rand[1] - closest_pt[1]))):
                 isValid = False
                 break
         if isValid:
@@ -302,6 +305,16 @@ state = 0 # use this to iterate through your path
 print(localization_mode) 
 frame_marker = 0
 item_detected = False
+
+xy = rrt(display_waypoints[0], display_waypoints[5], map)
+print("xy")
+print(xy)
+for i in range(len(xy)-1):
+    
+    display.setColor(0x00FF00)
+    display.drawLine(xy[i][0], xy[i][1], xy[i+1][0], xy[i+1][1])
+    
+
 while robot.step(timestep) != -1 and mode != 'planner':
 
     ###################
@@ -341,9 +354,9 @@ while robot.step(timestep) != -1 and mode != 'planner':
         wxx = pose_x
         wyy = pose_y
         wtt = pose_theta
-        print("wx: " + str(wx))
-        print("wy: " + str(wy))
-        print("wtt: " + str(wtt))
+        # print("wx: " + str(wx))
+        # print("wy: " + str(wy))
+        # print("wtt: " + str(wtt))
         #convert world coordinates into display coordinates
         if localization_mode == 'gps': 
             dy = 290-int(wy*30)
@@ -386,6 +399,9 @@ while robot.step(timestep) != -1 and mode != 'planner':
             color = g*256**2+g*256+g
             display.setColor(color)
             display.drawPixel(dx,dy) #draws from the top left corner(0,900)
+            # print(display_waypoints)
+            
+            
             
     # Draw the robot's current pose on the 360x360 display
     
@@ -394,8 +410,10 @@ while robot.step(timestep) != -1 and mode != 'planner':
     # RRT
     #
     ##################
-    print("RRT")
-    print(rrt(robot_start_pos, cube_waypoints[0], map))
+    # print("RRT")
+    # for i in range(1,11):
+    
+        # print(rrt(display_waypoints[0], display_waypoints[i], map))
     
     
     
