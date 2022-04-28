@@ -69,7 +69,14 @@ localization_mode = 'gps'
 
 print("Current Localization Mode: ", localization_mode)
 
-#Choose the mapping mode, uncomment the one you want to use.
+
+####################
+#
+# Robot Mapping Control Selection
+#
+####################
+#Choose the mapping mode, uncomment the one you want to use. Comment the others
+
 # mode = 'manual'
 # mode = 'planner'
 mode = 'autonomous'
@@ -90,7 +97,7 @@ lidar_sensor_readings = []  # List to hold sensor readings
 lidar_offsets = np.linspace(-LIDAR_ANGLE_RANGE / 2., +LIDAR_ANGLE_RANGE/2., LIDAR_ANGLE_BINS)# position in radians of all lidar bins on robot
 lidar_offsets = lidar_offsets[83:len(lidar_offsets)-83] # Only keep lidar readings not blocked by robot chassis
 
-frame_marker = 0
+frame_marker = 0 # for manipulation timing of robo-arm
 item_detected = False
 
 color_ranges = []
@@ -99,11 +106,13 @@ color_ranges = []
 display_waypoints = []
 temp_list = []
 
+#Used for computer vision
 green_prev_frame = False
+
+#Used for Autonomous Steering control
 bearing = 0
 Finished_turning = False
 
-map = None
 
 ###################################
 #
@@ -155,7 +164,7 @@ cube_waypoints = [(6.39358, -13.4795099, 4.71195),
                   (0.134933779, 0.3488725640, 3.1284947),
                   (0.13583087, 2.142451, 3.1260417)]
 
-# convert to display coordinates from world coordinates in waypoint list
+# Convert cube_waypoint coordinates into display coordinates
 for coord in cube_waypoints:
     counter = 0
     temp_list = []
