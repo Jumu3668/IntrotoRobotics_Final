@@ -366,7 +366,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
         elif kb.is_pressed(' '):
             vL = 0
             vR = 0
-
         elif kb.is_pressed('t'):
             item_detected = True
             print("item detected")
@@ -387,9 +386,8 @@ while robot.step(timestep) != -1 and mode != 'planner':
         else:  # slow down
             vL *= 0.75
             vR *= 0.75
-           
-                 
-    elif mode == 'autonomous':  # roomba mode
+               
+    elif mode == 'autonomous':  # roomba mode (drive around until close to object, if close keep going)
         vL = MAX_SPEED /2
         vR = MAX_SPEED /2
         front_obstacle = False
@@ -402,14 +400,12 @@ while robot.step(timestep) != -1 and mode != 'planner':
             bearing = random.uniform(0, math.pi)
         for i, rho in enumerate(middle):
             if rho != float('inf') and rho < 1.5:
-                print("collision detected")
                 Collision_Detected = True
                 vL = MAX_SPEED /4
                 vR = MAX_SPEED /4
         if Collision_Detected:
             if bearing - 0.2 <= pose_theta <= bearing + 0.2:
                 # we are on the correct new bearing
-                print("we are on the bearing")
                 Collision_Detected = False
                 Finished_turning = True
                 
