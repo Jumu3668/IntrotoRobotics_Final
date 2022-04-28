@@ -6,7 +6,7 @@ import sys
 import numpy as np
 from matplotlib import pyplot as plt
 import time
-
+import random
 import matplotlib.patches as patches
 # Uncomment if you want to use something else for finding the configuration space
 from scipy.signal import convolve2d
@@ -75,7 +75,7 @@ display = robot.getDevice("display")
 # Enable Camera
 camera = robot.getDevice('camera')
 camera.enable(timestep)
-camera.recognitionEnable(timestep)
+# camera.recognitionEnable(timestep)
 
 # Odometry
 
@@ -202,7 +202,11 @@ for coord in cube_waypoints:
 
 # rrt in pixel coordnates
 # define above to convert pixel coordnates to global coordniates
-
+# class Node():
+    #list parents
+    #list coordinates
+    # previous nodes
+    
 def rrt(start_pt, end_pt, map):
     # check pixels, modify to go faster
     delta_q = 0.5
@@ -217,7 +221,8 @@ def rrt(start_pt, end_pt, map):
     for n in range(10000):
         # random coord within map's rows and columns
         q_rand = (np.random.randint(len(map)), np.random.randint(len(map[0])))
-
+        while not valid(q_rand):
+            q_rand = (np.random.randint(len(map)), np.random.randint(len(map[0])))
         # print(q_rand)
         # 0.05 chance to test if at end point
         # check if q_rand is valid
@@ -275,8 +280,8 @@ def rrt(start_pt, end_pt, map):
 if mode == 'planner':
     map = np.load('map.npy')
     pixels = 0
-    map = np.flipud(map)
-    map = np.rot90(map, 3)
+    # map = np.flipud(map)
+    # map = np.rot90(map, 3)
     plt.imshow(map)
     # print(map)
     plt.show()
@@ -306,16 +311,17 @@ if mode == 'planner':
     end_w = (10.342, 1.34638)  # (Pose_X, Pose_Z) in meters
 
     # Convert the start_w and end_w from the webots coordinate frame into the map frame
-    ratio = 12/360
-    # (x, y) in 360x360 map
-    start = (int(round(start_w[0] / ratio)), int(round(start_w[1] / ratio)))
-    # (x, y) in 360x360 map
-    end = (int(round(end_w[0] / ratio)), int(round(end_w[1] / ratio)))
+    ratiow = 16/480
+    ratioh = 30/900
+    # (x, y) in 480/900 map
+    start = (int(round(start_w[0] / ratiow)), int(round(start_w[1] / ratioh)))
+    # (x, y) in 480/900 map
+    end = (int(round(end_w[0] / ratiow)), int(round(end_w[1] / ratioh)))
     # start = (167,185)
     print(str(start))
     print(str(end))
-    start = (200, 200)
-    end = (300, 200)
+    start = (240,745)
+    end = (410,54)
     # end = (293, 316)
     # print("test")
     # Part 2.3: Implement A* or Dijkstra's Algorithm to find a path
@@ -363,7 +369,20 @@ for i in range(len(xy)-1):
     display.setColor(0x00FF00)
     display.drawLine(xy[i][0], xy[i][1], xy[i+1][0], xy[i+1][1])
 
+    
+map = np.load('map.npy')
+kernel_size = 12
+Kernel = np.ones((kernel_size, kernel_size))
+Convolved_map = convolve2d(map, Kernel, mode='same')
+map = (Convolved_map > 0.3).astype(int)
+for x in range(len(map)):
+    for y in range(len(map)):
+        if map[x][y] >= 0.2:
+            display.drawPixel(x,y)
+
+
 green_prev_frame = False
+bearing = 0
 while robot.step(timestep) != -1 and mode != 'planner':
 
     ###################
@@ -451,18 +470,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
             display.drawPixel(dx, dy)  # draws from the top left corner(0,900)
             # print(display_waypoints)
 
-    # Draw the robot's current pose on the 360x360 display
-
-    ##################
-    #
-    # RRT
-    #
-    ##################
-    # print("RRT")
-    # for i in range(1,11):
-
-        # print(rrt(display_waypoints[0], display_waypoints[i], map))
-
     ###################
     #
     # Controller
@@ -507,24 +514,20 @@ while robot.step(timestep) != -1 and mode != 'planner':
         else:  # slow down
             vL *= 0.75
             vR *= 0.75
-    else:  # not manual mode
-        # Part 3.2: Feedback controller
-        # STEP 1: Calculate the error
-        rho = 0
-        alpha = -(math.atan2(waypoint[state][1]-pose_y,
-                  waypoint[state][0]-pose_x) + pose_theta)
+           
+                 
+    elif mode == 'autonomous':  # roomba mode
+        
+        vL = MAX_SPEED /2
+        vR = MAX_SPEED /2
+        front_obstacle = False
+        left_obstacle = False
+        right_obstacle = False
+        left = lidar_sensor_readings[0:len(lidar_sensor_readings)/3]
+        middle = lidar_sensor_readings[len(lidar_sensor_readings)/3+1 : len(lidar_sensor_readings)]
+        # for i, rho in enumerate(lidar_sensor_readings):
 
-        # STEP 2: Controller
-        dX = 0
-        dTheta = 0
-
-        # STEP 3: Compute wheelspeeds
-        vL = 0
-        vR = 0
-
-        # Normalize wheelspeed
-        # (Keep the wheel speeds a bit less than the actual platform MAX_SPEED to minimize jerk)
-
+                   
     # Odometry code. Don't change vL or vR speeds after this line.
     # We are using GPS and compass for this lab to get a better pose but this is how you'll do the odometry
     if localization_mode == 'odometry':
@@ -538,7 +541,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
         display.setColor(int(0xFFF000))
         display.drawPixel(int(240+pose_x*30), int(700-pose_y*30))
 
-    # print("X: %f Z: %f Theta: %f" % (pose_x, pose_y, pose_theta))
 
     ####################
     #
@@ -553,7 +555,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
 
     # Scoop animation stage 1
     if frame_marker >= 0 and frame_marker <= 45 and item_detected == True:
-        # move arm into position
         robot_parts[3].setPosition(float(tpos_pos_0[0]))
         robot_parts[4].setPosition(float(tpos_pos_0[1]))
         robot_parts[5].setPosition(float(tpos_pos_0[2]))
@@ -564,7 +565,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
 
     # Scoop animation stage 2
     if frame_marker > 45 and frame_marker <= 110 and item_detected == True:
-        # print("h")
         robot_parts[3].setPosition(float(scoop_pos_0[0]))
         robot_parts[4].setPosition(float(scoop_pos_0[1]))
         robot_parts[5].setPosition(float(scoop_pos_0[2]))
@@ -575,7 +575,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
 
     # Scoop animation stage 3
     if frame_marker > 110 and frame_marker <= 170 and item_detected == True:
-        # print("k")
         robot_parts[3].setPosition(float(scoop_pos_1[0]))
         robot_parts[4].setPosition(float(scoop_pos_1[1]))
         robot_parts[5].setPosition(float(scoop_pos_1[2]))
@@ -616,27 +615,28 @@ while robot.step(timestep) != -1 and mode != 'planner':
     image = camera.getImage()
     # green_prev_frame = False
     green_pres_frame = False
+    if mode != 'autonomous':
     
-    # Scan center-bottom rows of pixels for green in 240x135 picture
-    for x in range(90, 150):  # columns
-        for y in range(132, 134):  # rows
-            g = camera.imageGetGreen(image, width, x, y)
-            r = camera.imageGetRed(image, width, x, y)
-            b = camera.imageGetBlue(image, width, x, y)
-            # print("hello")
-            color = (r,g,b)
-            if check_if_color_in_range(color) == True:
-                print("i see green")
-                green_pres_frame = True
-                # green_prev_frame = green_pres_frame
-                
-    
-
-    # if true and !false
-    print(str(green_prev_frame) + " " + str(green_pres_frame))
-    if green_prev_frame and not green_pres_frame:
-        print("moving my arm")
-        item_detected = True
+        # Scan center-bottom rows of pixels for green in 240x135 picture
+        for x in range(90, 150):  # columns
+            for y in range(132, 134):  # rows
+                g = camera.imageGetGreen(image, width, x, y)
+                r = camera.imageGetRed(image, width, x, y)
+                b = camera.imageGetBlue(image, width, x, y)
+                # print("hello")
+                color = (r,g,b)
+                if check_if_color_in_range(color) == True:
+                    # print("i see green")
+                    green_pres_frame = True
+                    # green_prev_frame = green_pres_frame
+                    
         
-    green_prev_frame = green_pres_frame
+    
+        # if true and !false
+        # print(str(green_prev_frame) + " " + str(green_pres_frame))
+        if green_prev_frame and not green_pres_frame:
+            # print("moving my arm")
+            item_detected = True
+            
+        green_prev_frame = green_pres_frame
         # pixels x-axis 100-150
