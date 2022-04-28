@@ -45,6 +45,12 @@ for i in range(N_PARTS):
     robot_parts[i].setPosition(float(target_pos[i]))
     robot_parts[i].setVelocity(robot_parts[i].getMaxVelocity() / 2.0)
 
+###################
+#
+# Register Robot Components
+#
+###################
+
 #We are using Lidar to scan the world for manual and atonomous mapping
 lidar = robot.getDevice('Hokuyo URG-04LX-UG01')
 lidar.enable(timestep)
@@ -63,11 +69,8 @@ display = robot.getDevice("display")
 camera = robot.getDevice('camera')
 camera.enable(timestep)
 
-#Choose the localization mode, uncomment the one you want to use.
-localization_mode = 'gps'
-# localization_mode = 'odometry'
 
-print("Current Localization Mode: ", localization_mode)
+
 
 
 ####################
@@ -75,17 +78,30 @@ print("Current Localization Mode: ", localization_mode)
 # Robot Mapping Control Selection
 #
 ####################
-#Choose the mapping mode, uncomment the one you want to use. Comment the others
 
-# mode = 'manual'
-# mode = 'planner'
-mode = 'autonomous'
+
+# mode = 'manual'    # allows for wasd style robot control and driving
+# mode = 'planner'   # allows display of saved numpy maps and rrt to navigate to green cubes
+mode = 'autonomous'  # allows 'roomba' mode, where robot drives around w/o user input
+
+# ^^^^^^^^^^^ Choose the mapping mode, uncomment only the one you want to use. Comment the others
+
+
+draw_map = True
+draw_rrt = True
 
 ####################
 #
 #GLOBAL VARIABLES
 #
 ####################
+
+#Choose the localization mode. Changes calculations for how red and white lines are drawn on display.
+# uncomment only the one you want to use.
+localization_mode = 'gps'
+# localization_mode = 'odometry'
+
+
 pose_x = 0
 pose_y = 0
 pose_theta = 0
@@ -113,6 +129,7 @@ green_prev_frame = False
 bearing = 0
 Finished_turning = False
 
+print("Current Localization Mode: ", localization_mode)
 
 ###################################
 #
@@ -245,6 +262,8 @@ def rrt(start_pt, end_pt, map): #rrt function, used to map path needed to be tak
 if mode == 'planner': #setting the mode to a planning state
     map = np.load('map.npy') #load the map
     pixels = 0  #variable pixels set to 0
+    map = np.fliplr(map)
+    map = np.rot90(map)
     plt.imshow(map) #show the drawn map
     plt.show() #show the plot
     kernel_size = 12 #size for kerneling, change value to widen or shrink thickness
@@ -272,20 +291,20 @@ if mode == 'planner': #setting the mode to a planning state
 map = np.zeros((480, 900))  # Replace None by a numpy 2D floating point array
 
 xy = rrt(display_waypoints[0], display_waypoints[5], map)
-
-for i in range(len(xy)-1):
-    display.setColor(0x00FF00)
-    display.drawLine(xy[i][0], xy[i][1], xy[i+1][0], xy[i+1][1])
-   
-map = np.load('map.npy')
-kernel_size = 12
-Kernel = np.ones((kernel_size, kernel_size))
-Convolved_map = convolve2d(map, Kernel, mode='same')
-map = (Convolved_map > 0.3).astype(int)
-for x in range(len(map)):
-    for y in range(len(map)):
-        if map[x][y] >= 0.2:
-            display.drawPixel(x,y)
+if draw_rrt:
+    for i in range(len(xy)-1):
+        display.setColor(0x00FF00)
+        display.drawLine(xy[i][0], xy[i][1], xy[i+1][0], xy[i+1][1])
+if draw_map:
+    map = np.load('map.npy')
+    kernel_size = 12
+    Kernel = np.ones((kernel_size, kernel_size))
+    Convolved_map = convolve2d(map, Kernel, mode='same')
+    map = (Convolved_map > 0.3).astype(int)
+    for x in range(len(map)):
+        for y in range(len(map)):
+            if map[x][y] >= 0.2:
+                display.drawPixel(x,y)
 
 while robot.step(timestep) != -1 and mode != 'planner':
 
@@ -399,20 +418,24 @@ while robot.step(timestep) != -1 and mode != 'planner':
     elif mode == 'autonomous':  # roomba mode (drive around until close to object, if close keep going)
         vL = MAX_SPEED /2
         vR = MAX_SPEED /2
-        front_obstacle = False
-        left_obstacle = False
-        right_obstacle = False
+
         Collision_Detected = False
-        left = lidar_sensor_readings[0:len(lidar_sensor_readings)//3]
+        
+        # left = lidar_sensor_readings[0:len(lidar_sensor_readings)//3]
         middle = lidar_sensor_readings[len(lidar_sensor_readings)//3+1 : len(lidar_sensor_readings)]
         if Finished_turning == True:
             bearing = random.uniform(0, math.pi)
+            
         for i, rho in enumerate(middle):
-            if rho != float('inf') and rho < 1.5:
+            if rho != float('inf') and rho < 1.4:
                 Collision_Detected = True
                 vL = MAX_SPEED /4
                 vR = MAX_SPEED /4
         if Collision_Detected:
+            savemap = (map > 0.3).astype(int)
+            np.save('map', savemap)
+            print("Map file saved")
+            # print("Collision Detected!")
             if bearing - 0.2 <= pose_theta <= bearing + 0.2:
                 # we are on the correct new bearing
                 Collision_Detected = False
@@ -427,6 +450,9 @@ while robot.step(timestep) != -1 and mode != 'planner':
                 vL = MAX_SPEED / 3
                 vR = -MAX_SPEED / 3   
                 Finished_turning = False
+                
+                
+                
     if localization_mode == 'odometry':
         pose_x -= (vL+vR)/2/MAX_SPEED*MAX_SPEED_MS * \
             timestep/1000.0*math.cos(pose_theta)
