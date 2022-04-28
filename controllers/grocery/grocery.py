@@ -206,71 +206,114 @@ for coord in cube_waypoints:
     #list parents
     #list coordinates
     # previous nodes
+
+class Node:
+    """
+    Node for RRT Algorithm. This is what you'll make your graph with!
+    """
+    def __init__(self, pt, parent=None):
+        self.point = pt # n-Dimensional point
+        self.parent = parent # Parent node
+        self.path_from_parent = [] # List of points along the way from the parent node (for edge's collision checking)
+
+def state_is_valid(state):
+        '''
+        Function that takes an n-dimensional point and checks if it is within the bounds and not inside the obstacle
+        :param state: n-Dimensional point
+        :return: Boolean whose value depends on whether the state/point is valid or not
+        '''
+        for dim in range(state_bounds.shape[0]):
+            if state[dim] < state_bounds[dim][0]: return False
+            if state[dim] >= state_bounds[dim][1]: return False
+        for obs in obstacles:
+            if np.linalg.norm(state - obs[0]) <= obs[1]: return False
+        return True
+        
+def get_random_valid_vertex(state_is_valid, bounds):
+    '''
+    Function that samples a random n-dimensional point which is valid (i.e. collision free and within the bounds)
+    :param state_valid: The state validity function that returns a boolean
+    :param bounds: The world bounds to sample points from
+    :return: n-Dimensional point/state
+    '''
+    vertex = None
+    while vertex is None: # Get starting vertex
+        pt = np.random.rand(bounds.shape[0]) * (bounds[:,1]-bounds[:,0]) + bounds[:,0]
+        if state_is_valid(pt):
+            vertex = pt
+    return vertex
+def get_nearest_vertex(node_list, q_point):
+    '''
+    Function that finds a node in node_list with closest node.point to query q_point
+    :param node_list: List of Node objects
+    :param q_point: n-dimensional array representing a point
+    :return Node in node_list with closest node.point to query q_point
+    '''
+
+    # TODO: Your Code Here
+    # raise NotImplementedError
+    ret_node = node_list[0]
+
+    dist = np.linalg.norm(node_list[0].point - q_point)
+
+    for i in node_list:
+        temp = i.point
+        if dist > np.linalg.norm(temp - q_point):
+            dist = np.linalg.norm(temp - q_point)
+            ret_node = i
+
+    return ret_node    
+def steer(from_point, to_point, delta_q):
+    '''
+    :param from_point: n-Dimensional array (point) where the path to "to_point" is originating from (e.g., [1.,2.])
+    :param to_point: n-Dimensional array (point) indicating destination (e.g., [0., 0.])
+    :param delta_q: Max path-length to cover, possibly resulting in changes to "to_point" (e.g., 0.2)
+    :return path: Array of points leading from "from_point" to "to_point" (inclusive of endpoints)  (e.g., [ [1.,2.], [1., 1.], [0., 0.] ])
+    '''
+    # TODO: Figure out if you can use "to_point" as-is, or if you need to move it so that it's only delta_q distance away
+
+    # TODO Use the np.linspace function to get 10 points along the path from "from_point" to "to_point"
+    diff = to_point-from_point
+    euc_dist = np.linalg.norm(diff)
+    new_to = (diff/euc_dist)*delta_q + from_point
+
+    if delta_q < euc_dist:
+        path = np.linspace(from_point, new_to, num = 10)
+    else:
+        path = np.linspace(from_point, to_point, num = 10)
+
+    return path
+
+def check_path_valid(path, state_is_valid):
+
+    for i in path:
+        if state_is_valid(i) == False:
+            return False
+    return True    
+
+def rrt(state_bounds, state_is_valid, starting_point, goal_point, k, delta_q):
+    node_list = []
+    node_list.append(Node(starting_point, parent=None)) # Add Node at starting point with no parent
+
+    for nothing in range(k):
+        q_rand = get_random_valid_vertex(state_is_valid, state_bounds)
+        if goal_point is not None and random.random() < 0.04:
+            q_rand = goal_point
+        
+        near_point = get_nearest_vertex(node_list, q_rand)
+        path = steer(near_point.point, q_rand, delta_q)
+
+        # add created node to node list and set node parent and path from parent
+        if check_path_valid(path, state_is_valid):
+            new_node = Node(path[-1], parent= near_point)
+            new_node.path_from_parent = path
+            node_list.append(new_node)
+
+        # if we are basically on the point
+        if goal_point is not None and np.linalg.norm(Node(path[-1], parent= near_point).point-goal_point) < 0.000001:
+            return node_list
     
-def rrt(start_pt, end_pt, map):
-    # check pixels, modify to go faster
-    delta_q = 0.5
-    # checks single coord is valid
-
-    def valid(pt):
-
-        return not map[int(pt[0])][int(pt[1])]
-    # every tuple has coord, index of parent
-    explored = [(start_pt, None)]
-    # print(explored)
-    for n in range(10000):
-        # random coord within map's rows and columns
-        q_rand = (np.random.randint(len(map)), np.random.randint(len(map[0])))
-        while not valid(q_rand):
-            q_rand = (np.random.randint(len(map)), np.random.randint(len(map[0])))
-        # print(q_rand)
-        # 0.05 chance to test if at end point
-        # check if q_rand is valid
-        # if q_rand
-
-        if np.random.rand() < 0.05:
-            q_rand = end_pt
-        # closest to q_rand
-        closest_index = -1
-        closest_dist = float("inf")
-        # finds the closest point
-        for i in range(len(explored)):
-            pt = explored[i][0]
-            # eucidean distance
-            dist = ((q_rand[0] - pt[0]) ** 2 + (q_rand[1] - pt[1]) ** 2) ** 0.5
-            if dist < closest_dist:
-                closest_dist = dist
-                closest_index = i
-        #path is valid
-        isValid = True
-        closest_pt = explored[closest_index][0]
-        # checks every point along the line between closest pt and q_rand
-        for i in np.arange(0, closest_dist, delta_q):
-            p = i / closest_dist
-            # print(p)
-            # print(valid((closest_pt[0] + p * (q_rand[0] - closest_pt[0]),
-                  # closest_pt[1] + p * (q_rand[1] - closest_pt[1]))))
-            if not valid((closest_pt[0] + p * (q_rand[0] - closest_pt[0]), closest_pt[1] + p * (q_rand[1] - closest_pt[1]))):
-                isValid = False
-                break
-        if isValid:
-            # adds a tuple to the explored array
-            explored.append((q_rand, closest_index))
-            # checks within one pixel of the goal
-            dist = ((q_rand[0] - end_pt[0]) ** 2 +
-                    (q_rand[1] - end_pt[1]) ** 2) ** 0.5
-            if dist < 1:
-                # print(explored)
-                path = [q_rand]
-                c = explored[len(explored) - 1]
-                # unrolls path using parent pointer
-                while not c[1] is None:
-                    c = explored[c[1]]
-                    path.insert(0, c[0])
-                return path
-    # print(explored)
-    return -1
-
+    return node_list
 
 ###################
 #
@@ -356,8 +399,10 @@ state = 0  # use this to iterate through your path
 print(localization_mode)
 frame_marker = 0
 item_detected = False
-
-xy = rrt(display_waypoints[0], display_waypoints[5], map)
+bounds = [[0,16],[0,30]]
+bounds = np.array([[0,1],[0,1]])
+K = 250
+xy = rrt(bounds, state_is_valid=True, starting_point=cube_waypoints[0], goal_point=cube_waypoints[2], k=K , delta_q=np.linalg.norm(bounds/10.))
 print("xy")
 print(xy)
 for i in range(len(xy)-1):
