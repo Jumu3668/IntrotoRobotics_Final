@@ -9,5 +9,5 @@ orthographicViewHeight: 10.8838
 textFiles: 0 "controllers/grocery/grocery.py"
 globalOptionalRendering: CoordinateSystem::RangeFinderFrustums::JointAxes
 consoles: Console:All:All
-renderingDevicePerspectives: TIAGo Steel:camera;1;1.10417;0;1.40219e-09
+renderingDevicePerspectives: TIAGo Steel:camera;1;1.22963;0.308339;0
 renderingDevicePerspectives: TIAGo Steel:display;1;0.991111;0;0
