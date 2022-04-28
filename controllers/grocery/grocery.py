@@ -8,7 +8,6 @@ from matplotlib import pyplot as plt
 import time
 import random
 import matplotlib.patches as patches
-# Uncomment if you want to use something else for finding the configuration space
 from scipy.signal import convolve2d
 MAX_SPEED = 7.0  # [rad/s]
 MAX_SPEED_MS = 0.633  # [m/s]
@@ -46,14 +45,7 @@ for i in range(N_PARTS):
     robot_parts[i].setPosition(float(target_pos[i]))
     robot_parts[i].setVelocity(robot_parts[i].getMaxVelocity() / 2.0)
 
-# The Tiago robot has a couple more sensors than the e-Puck
-# Some of them are mentioned below. We will use its LiDAR for Lab 5
-
-# range = robot.getDevice('range-finder')
-# range.enable(timestep)
-# camera = robot.getDevice('camera')
-# camera.enable(timestep)
-# camera.recognitionEnable(timestep)
+#We are using Lidar to scan the world for manual and atonomous mapping
 lidar = robot.getDevice('Hokuyo URG-04LX-UG01')
 lidar.enable(timestep)
 lidar.enablePointCloud()
@@ -64,24 +56,29 @@ gps.enable(timestep)
 compass = robot.getDevice("compass")
 compass.enable(timestep)
 
-# We are using a keyboard to remote control the robot
-keyboard = robot.getKeyboard()
-keyboard.enable(timestep)
-
 # The display is used to display the map. We are using 480x900 pixels to
-# map the 12x12m2 apartment
 display = robot.getDevice("display")
 
 # Enable Camera
 camera = robot.getDevice('camera')
 camera.enable(timestep)
-# camera.recognitionEnable(timestep)
 
-# Odometry
-
+#Choose the localization mode, uncomment the one you want to use.
 localization_mode = 'gps'
 # localization_mode = 'odometry'
 
+print("Current Localization Mode: ", localization_mode)
+
+#Choose the mapping mode, uncomment the one you want to use.
+# mode = 'manual'
+# mode = 'planner'
+mode = 'autonomous'
+
+####################
+#
+#GLOBAL VARIABLES
+#
+####################
 pose_x = 0
 pose_y = 0
 pose_theta = 0
@@ -89,38 +86,32 @@ pose_theta = 0
 vL = 0
 vR = 0
 
-
 lidar_sensor_readings = []  # List to hold sensor readings
-# position in radians of all lidar bins on robot
-lidar_offsets = np.linspace(-LIDAR_ANGLE_RANGE /
-                            2., +LIDAR_ANGLE_RANGE/2., LIDAR_ANGLE_BINS)
-# print(lidar_offsets)
-# Only keep lidar readings not blocked by robot chassis
-lidar_offsets = lidar_offsets[83:len(lidar_offsets)-83]
+lidar_offsets = np.linspace(-LIDAR_ANGLE_RANGE / 2., +LIDAR_ANGLE_RANGE/2., LIDAR_ANGLE_BINS)# position in radians of all lidar bins on robot
+lidar_offsets = lidar_offsets[83:len(lidar_offsets)-83] # Only keep lidar readings not blocked by robot chassis
+
+frame_marker = 0
+item_detected = False
+
+color_ranges = []
+
+#empty arrays used to convert map coords into display coords
+display_waypoints = []
+temp_list = []
+
+green_prev_frame = False
+bearing = 0
+Finished_turning = False
 
 map = None
-##### ^^^ [End] Do Not Modify ^^^ #####
 
-##################### IMPORTANT #####################
-# Set the mode here. Please change to 'autonomous' before submission
-# rrt testing
-
-# mode = 'manual'  # Part 1.1: manual mode
-# mode = 'planner'
-mode = 'autonomous'
-
-
-########################
+###################################
 #
 # Computer Vision Helper Functions
 #
-#########################
-
-light_green = [158, 206, 127]
-dark_green = [87, 144, 36]
-
-color_ranges = []
-def add_color_range_to_detect(lower_bound, upper_bound):
+###################################
+#function from homework 3, used to add color ranges to detect between
+def add_color_range_to_detect(lower_bound, upper_bound): 
     '''
     @param lower_bound: Tuple of BGR values
     @param upper_bound: Tuple of BGR values
@@ -129,7 +120,7 @@ def add_color_range_to_detect(lower_bound, upper_bound):
     # Add color range to global list of color ranges to detect
     color_ranges.append([lower_bound, upper_bound])
 
-
+#function from homework 3, used to check if passed in color is in the range previously defined
 def check_if_color_in_range(bgr_tuple):
     '''
     @param bgr_tuple: Tuple of BGR values
@@ -147,16 +138,11 @@ def check_if_color_in_range(bgr_tuple):
             return True
     return False
 
+light_green = [158, 206, 127] #color values to be passed into the color ranges
+dark_green = [87, 144, 36]
+add_color_range_to_detect(dark_green, light_green) #adding colors to color range 
 
-add_color_range_to_detect(dark_green, light_green)
-
-###################
-#
-# RRT
-#
-###################
-#  green cube pickup world coordinates WHITE SHELVES
-#   ordered in (wx, wy, wtt)
+#List of X, Y, Theta of the robot when in the position to grab all cubes
 cube_waypoints = [(6.39358, -13.4795099, 4.71195),
                   (8.11796, -7.76351, 3.14174),
                   (8.129499, -1.490345, 3.141773),
@@ -169,17 +155,11 @@ cube_waypoints = [(6.39358, -13.4795099, 4.71195),
                   (0.134933779, 0.3488725640, 3.1284947),
                   (0.13583087, 2.142451, 3.1260417)]
 
-
-display_waypoints = []
-temp_list = []
-
 # convert to display coordinates from world coordinates in waypoint list
 for coord in cube_waypoints:
     counter = 0
     temp_list = []
     for i, element in enumerate(coord):
-        # print(element)
-
         if localization_mode == 'odometry':
             if i == 0:  # x value
                 temp_list.append(245+int(element*30))
@@ -196,60 +176,39 @@ for coord in cube_waypoints:
             temp_list.append(element)
 
     display_waypoints.append(tuple(temp_list))
-
-# print(display_waypoints)
-
-
-# rrt in pixel coordnates
-# define above to convert pixel coordnates to global coordniates
-# class Node():
-    #list parents
-    #list coordinates
-    # previous nodes
-    
-def rrt(start_pt, end_pt, map):
+  
+def rrt(start_pt, end_pt, map): #rrt function, used to map path needed to be taken
     # check pixels, modify to go faster
     delta_q = 0.5
     # checks single coord is valid
-
-    def valid(pt):
-
+    def valid(pt): 
         return not map[int(pt[0])][int(pt[1])]
-    # every tuple has coord, index of parent
+        # every tuple has coord, index of parent
     explored = [(start_pt, None)]
-    # print(explored)
     for n in range(10000):
         # random coord within map's rows and columns
         q_rand = (np.random.randint(len(map)), np.random.randint(len(map[0])))
         while not valid(q_rand):
             q_rand = (np.random.randint(len(map)), np.random.randint(len(map[0])))
-        # print(q_rand)
-        # 0.05 chance to test if at end point
-        # check if q_rand is valid
-        # if q_rand
-
+            
         if np.random.rand() < 0.05:
             q_rand = end_pt
-        # closest to q_rand
-        closest_index = -1
+
+        closest_index = -1 # closest to q_rand
         closest_dist = float("inf")
         # finds the closest point
         for i in range(len(explored)):
             pt = explored[i][0]
-            # eucidean distance
-            dist = ((q_rand[0] - pt[0]) ** 2 + (q_rand[1] - pt[1]) ** 2) ** 0.5
+            dist = ((q_rand[0] - pt[0]) ** 2 + (q_rand[1] - pt[1]) ** 2) ** 0.5 # eucidean distance
             if dist < closest_dist:
                 closest_dist = dist
                 closest_index = i
-        #path is valid
-        isValid = True
+        isValid = True  #path is valid
         closest_pt = explored[closest_index][0]
         # checks every point along the line between closest pt and q_rand
         for i in np.arange(0, closest_dist, delta_q):
             p = i / closest_dist
-            # print(p)
-            # print(valid((closest_pt[0] + p * (q_rand[0] - closest_pt[0]),
-                  # closest_pt[1] + p * (q_rand[1] - closest_pt[1]))))
+
             if not valid((closest_pt[0] + p * (q_rand[0] - closest_pt[0]), closest_pt[1] + p * (q_rand[1] - closest_pt[1]))):
                 isValid = False
                 break
@@ -260,7 +219,6 @@ def rrt(start_pt, end_pt, map):
             dist = ((q_rand[0] - end_pt[0]) ** 2 +
                     (q_rand[1] - end_pt[1]) ** 2) ** 0.5
             if dist < 1:
-                # print(explored)
                 path = [q_rand]
                 c = explored[len(explored) - 1]
                 # unrolls path using parent pointer
@@ -268,104 +226,48 @@ def rrt(start_pt, end_pt, map):
                     c = explored[c[1]]
                     path.insert(0, c[0])
                 return path
-    # print(explored)
     return -1
 
-
-###################
+##########
 #
 # Planner
 #
-###################
-if mode == 'planner':
-    map = np.load('map.npy')
-    pixels = 0
-    # map = np.flipud(map)
-    # map = np.rot90(map, 3)
-    plt.imshow(map)
-    # print(map)
-    plt.show()
-    kernel_size = 12
-    Kernel = np.ones((kernel_size, kernel_size))
-    Convolved_map = convolve2d(map, Kernel, mode='same')
-    Convolved_map = (Convolved_map > 0.3).astype(int)
-    # Convolved_map = np.fliplr(Convolved_map)
-    # Convolved_map = np.rot90(Convolved_map)
-    # boxy_map = map.tolist()
-    # for x in range(len(boxy_map)):
-    # for y in range(len(boxy_map)):
-    # if boxy_map[x][y] == 1:
-    # pixels+= 1
-    # 12-16 pixels
+##########
+if mode == 'planner': #setting the mode to a planning state
+    map = np.load('map.npy') #load the map
+    pixels = 0  #variable pixels set to 0
+    plt.imshow(map) #show the drawn map
+    plt.show() #show the plot
+    kernel_size = 12 #size for kerneling, change value to widen or shrink thickness
+    Kernel = np.ones((kernel_size, kernel_size)) #kernel is equal to an array of ones in a square the size of the kernel
+    Convolved_map = convolve2d(map, Kernel, mode='same') #the convolved map is equal to the map with the kerneling
+    Convolved_map = (Convolved_map > 0.3).astype(int) #update convolved map
 
-    # draw box around
-    # print(pixels)
-    np.set_printoptions(threshold=sys.maxsize)
-    # print(Convolved_map.reshape(360,360).tolist())
-    plt.imshow(Convolved_map)
-    plt.show()
-    # print("test0")
+    np.set_printoptions(threshold=sys.maxsize) #setting the size that an np array can print to in the console (show entire np array)
 
-    # Part 2.3: Provide start and end in world coordinate frame and convert it to map's frame
+    plt.imshow(Convolved_map) #show the convolved map on screen
+    plt.show() #show the plot
+
     start_w = (4.46793, 8.05674)  # (Pose_X, Pose_Z) in meters
     end_w = (10.342, 1.34638)  # (Pose_X, Pose_Z) in meters
 
     # Convert the start_w and end_w from the webots coordinate frame into the map frame
-    ratiow = 16/480
-    ratioh = 30/900
-    # (x, y) in 480/900 map
-    start = (int(round(start_w[0] / ratiow)), int(round(start_w[1] / ratioh)))
-    # (x, y) in 480/900 map
-    end = (int(round(end_w[0] / ratiow)), int(round(end_w[1] / ratioh)))
-    # start = (167,185)
-    # print(str(start))
-    # print(str(end))
-    start = (240,745)
-    end = (410,54)
-    # end = (293, 316)
-    # print("test")
-    # Part 2.3: Implement A* or Dijkstra's Algorithm to find a path
-    # rrt testing
-    # print(rrt(start, end, Convolved_map))
+    ratiow = 16/480 #ratio of pixels per meter for the width
+    ratioh = 30/900 #ratio of pixels per meter for the heignt
+    start = (int(round(start_w[0] / ratiow)), int(round(start_w[1] / ratioh))) # (x, y) in 480/900 map
+    end = (int(round(end_w[0] / ratiow)), int(round(end_w[1] / ratioh))) # (x, y) in 480/900 map
+    start = (240,745) #start position x, y
+    end = (410,54) #end position x, y
+    waypoints = [] #empty array to gold waypoints
 
-    # Part 2.1: Load map (map.npy) from disk and visualize it
-
-    # Part 2.2: Compute an approximation of the “configuration space”
-
-    # Part 2.3 continuation: Call path_planner
-    # map = map.tolist()
-    # stuff = path_planner(map, start, end)
-    # print(stuff)
-    # Part 2.4: Turn paths into waypoints and save on disk as path.npy and visualize it
-    waypoints = []
-
-######################
-#
-# Map Initialization
-#
-######################
-
-# Part 1.2: Map Initialization
-
-# Initialize your map data structure here as a 2D floating point array
 map = np.zeros((480, 900))  # Replace None by a numpy 2D floating point array
 
-state = 0  # use this to iterate through your path
-
-
-print(localization_mode)
-frame_marker = 0
-item_detected = False
-
 xy = rrt(display_waypoints[0], display_waypoints[5], map)
-print("xy")
-print(xy)
-for i in range(len(xy)-1):
 
+for i in range(len(xy)-1):
     display.setColor(0x00FF00)
     display.drawLine(xy[i][0], xy[i][1], xy[i+1][0], xy[i+1][1])
-
-    
+   
 map = np.load('map.npy')
 kernel_size = 12
 Kernel = np.ones((kernel_size, kernel_size))
@@ -376,10 +278,6 @@ for x in range(len(map)):
         if map[x][y] >= 0.2:
             display.drawPixel(x,y)
 
-
-green_prev_frame = False
-bearing = 0
-Finished_turning = False
 while robot.step(timestep) != -1 and mode != 'planner':
 
     ###################
@@ -403,8 +301,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
 
     lidar_sensor_readings = lidar.getRangeImage()
     lidar_sensor_readings = lidar_sensor_readings[83:len(lidar_sensor_readings)-83]
-    # print(str(lidar_sensor_readings))
-    # print(len(lidar_sensor_readings))
     for i, rho in enumerate(lidar_sensor_readings):
         alpha = lidar_offsets[i]  # get current lidar bin position in radians
 
@@ -419,9 +315,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
         wxx = pose_x
         wyy = pose_y
         wtt = pose_theta
-        # print("wx: " + str(wx))
-        # print("wy: " + str(wy))
-        # print("wtt: " + str(wtt))
         # convert world coordinates into display coordinates
         if localization_mode == 'gps':
             dy = 290-int(wy*30)
@@ -431,25 +324,12 @@ while robot.step(timestep) != -1 and mode != 'planner':
             dy = 700-int(wy*30)
             dx = 245+int(wx*30)
 
-        # print("wx: " + str(wx))
-        # print("wy: " + str(wy))
-        # print(rho)
-
         if rho < LIDAR_SENSOR_MAX_RANGE:
-            # Part 1.3: visualize map gray values.
-
-            # You will eventually REPLACE the following 2 lines with a more robust version of the map
-            # with a grayscale drawing containing more levels than just 0 and 1.
-            # display.setColor(0xFFFFFF)
-
-            # convert world coordinates into display coordinates
 
             if dy >= 900:
                 dy = 900
             if dx >= 480:
                 dx = 480
-            # print("dy: " + str(dy))
-            # print("dx: " + str(dx))
 
             # Lidar Filter
             val = map[dx-1][dy-1]
@@ -459,18 +339,17 @@ while robot.step(timestep) != -1 and mode != 'planner':
                 val += 0.0045
                 map[dx-1][dy-1] = val
 
-            # converting [0,1] to grayscale intensity [0,255]
-            g = int(val * 255)
+            g = int(val * 255) # converting [0,1] to grayscale intensity [0,255]
             color = g*256**2+g*256+g
             display.setColor(color)
             display.drawPixel(dx, dy)  # draws from the top left corner(0,900)
-            # print(display_waypoints)
 
     ###################
     #
     # Controller
     #
     ###################
+    #using keyboard presses to control the robot
     if mode == 'manual':
         if kb.is_pressed("a"):
             vL = -MAX_SPEED
@@ -492,12 +371,10 @@ while robot.step(timestep) != -1 and mode != 'planner':
             item_detected = True
             print("item detected")
         elif kb.is_pressed('q'):
-            # Part 1.4: Filter map and save to filesystem
             savemap = (map > 0.3).astype(int)
             np.save('map', savemap)
             print("Map file saved")
         elif kb.is_pressed('l'):
-            # You will not use this portion in Part 1 but here's an example for loading saved a numpy array
             map = np.load("map.npy")
             map = np.rot90(map, 3)
             map = np.fliplr(map)
@@ -513,32 +390,23 @@ while robot.step(timestep) != -1 and mode != 'planner':
            
                  
     elif mode == 'autonomous':  # roomba mode
-        
         vL = MAX_SPEED /2
         vR = MAX_SPEED /2
         front_obstacle = False
         left_obstacle = False
         right_obstacle = False
-        # print(str(len(lidar_sensor_readings)))
         Collision_Detected = False
         left = lidar_sensor_readings[0:len(lidar_sensor_readings)//3]
-        # print(str(len(left)))
         middle = lidar_sensor_readings[len(lidar_sensor_readings)//3+1 : len(lidar_sensor_readings)]
-        # right =
         if Finished_turning == True:
             bearing = random.uniform(0, math.pi)
-        # print(str(pose_theta))
         for i, rho in enumerate(middle):
             if rho != float('inf') and rho < 1.5:
-                # print(str(rho))
                 print("collision detected")
                 Collision_Detected = True
                 vL = MAX_SPEED /4
                 vR = MAX_SPEED /4
-                #go somewhere else
         if Collision_Detected:
-            # print("pose theta" + str(pose_theta))
-            # print("bearing" + str(bearing))
             if bearing - 0.2 <= pose_theta <= bearing + 0.2:
                 # we are on the correct new bearing
                 print("we are on the bearing")
@@ -554,10 +422,7 @@ while robot.step(timestep) != -1 and mode != 'planner':
                 vL = MAX_SPEED / 3
                 vR = -MAX_SPEED / 3   
                 Finished_turning = False
-    # Odometry code. Don't change vL or vR speeds after this line.
-    # We are using GPS and compass for this lab to get a better pose but this is how you'll do the odometry
     if localization_mode == 'odometry':
-
         pose_x -= (vL+vR)/2/MAX_SPEED*MAX_SPEED_MS * \
             timestep/1000.0*math.cos(pose_theta)
         pose_y -= (vL+vR)/2/MAX_SPEED*MAX_SPEED_MS * \
@@ -576,8 +441,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
     tpos_pos_0 = (0.07, 0, -1.7, 0.0, -1.7, 1.39, 1.7)
     scoop_pos_0 = (1.3, -0.15, -1.7, 0.8, -1.7, 1.39, 1.7)
     scoop_pos_1 = (0.07, 0, -1.4, 2.29, -1.7, 1.39, 1.7)
-    # if item_detected:
-    # print(frame_marker)
 
     # Scoop animation stage 1
     if frame_marker >= 0 and frame_marker <= 45 and item_detected == True:
@@ -622,6 +485,7 @@ while robot.step(timestep) != -1 and mode != 'planner':
     if frame_marker > 290:  # animation complete. Reset Vars
         item_detected = False
         frame_marker = 0
+
     # Actuator commands
     robot_parts[MOTOR_LEFT].setVelocity(vL)
     robot_parts[MOTOR_RIGHT].setVelocity(vR)
@@ -639,7 +503,6 @@ while robot.step(timestep) != -1 and mode != 'planner':
     width = camera.getWidth()
     height = camera.getHeight()
     image = camera.getImage()
-    # green_prev_frame = False
     green_pres_frame = False
     if mode != 'autonomous':
     
@@ -649,20 +512,11 @@ while robot.step(timestep) != -1 and mode != 'planner':
                 g = camera.imageGetGreen(image, width, x, y)
                 r = camera.imageGetRed(image, width, x, y)
                 b = camera.imageGetBlue(image, width, x, y)
-                # print("hello")
                 color = (r,g,b)
                 if check_if_color_in_range(color) == True:
-                    # print("i see green")
                     green_pres_frame = True
-                    # green_prev_frame = green_pres_frame
                     
-        
-    
-        # if true and !false
-        # print(str(green_prev_frame) + " " + str(green_pres_frame))
         if green_prev_frame and not green_pres_frame:
-            # print("moving my arm")
             item_detected = True
-            
         green_prev_frame = green_pres_frame
-        # pixels x-axis 100-150
+
