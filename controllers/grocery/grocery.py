@@ -1,4 +1,9 @@
-"""lab5 controller."""
+"""Intro to Robotics Final Project"""
+#CSCI 3302
+#4/27/2022
+#Justin Murillo
+#Joshua O'Leary
+#John Lim
 from controller import Robot, Motor, Camera, RangeFinder, Lidar, Display
 import math
 import keyboard as kb
