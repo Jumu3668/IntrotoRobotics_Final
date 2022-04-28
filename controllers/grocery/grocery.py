@@ -105,9 +105,9 @@ map = None
 # Set the mode here. Please change to 'autonomous' before submission
 # rrt testing
 
-mode = 'manual'  # Part 1.1: manual mode
+# mode = 'manual'  # Part 1.1: manual mode
 # mode = 'planner'
-# mode = 'autonomous'
+mode = 'autonomous'
 
 
 ########################
@@ -318,15 +318,15 @@ if mode == 'planner':
     # (x, y) in 480/900 map
     end = (int(round(end_w[0] / ratiow)), int(round(end_w[1] / ratioh)))
     # start = (167,185)
-    print(str(start))
-    print(str(end))
+    # print(str(start))
+    # print(str(end))
     start = (240,745)
     end = (410,54)
     # end = (293, 316)
     # print("test")
     # Part 2.3: Implement A* or Dijkstra's Algorithm to find a path
     # rrt testing
-    print(rrt(start, end, Convolved_map))
+    # print(rrt(start, end, Convolved_map))
 
     # Part 2.1: Load map (map.npy) from disk and visualize it
 
@@ -349,10 +349,6 @@ if mode == 'planner':
 
 # Initialize your map data structure here as a 2D floating point array
 map = np.zeros((480, 900))  # Replace None by a numpy 2D floating point array
-waypoints = []
-if mode == 'autonomous':
-    # Part 3.1: Load path from disk and visualize it
-    waypoints = []  # Replace with code to load your path
 
 state = 0  # use this to iterate through your path
 
@@ -383,6 +379,7 @@ for x in range(len(map)):
 
 green_prev_frame = False
 bearing = 0
+Finished_turning = False
 while robot.step(timestep) != -1 and mode != 'planner':
 
     ###################
@@ -405,8 +402,7 @@ while robot.step(timestep) != -1 and mode != 'planner':
     pose_theta = -((math.atan2(n[0], n[2]))-1.5708)
 
     lidar_sensor_readings = lidar.getRangeImage()
-    lidar_sensor_readings = lidar_sensor_readings[83:len(
-        lidar_sensor_readings)-83]
+    lidar_sensor_readings = lidar_sensor_readings[83:len(lidar_sensor_readings)-83]
     # print(str(lidar_sensor_readings))
     # print(len(lidar_sensor_readings))
     for i, rho in enumerate(lidar_sensor_readings):
@@ -523,11 +519,41 @@ while robot.step(timestep) != -1 and mode != 'planner':
         front_obstacle = False
         left_obstacle = False
         right_obstacle = False
-        left = lidar_sensor_readings[0:len(lidar_sensor_readings)/3]
-        middle = lidar_sensor_readings[len(lidar_sensor_readings)/3+1 : len(lidar_sensor_readings)]
-        # for i, rho in enumerate(lidar_sensor_readings):
-
-                   
+        # print(str(len(lidar_sensor_readings)))
+        Collision_Detected = False
+        left = lidar_sensor_readings[0:len(lidar_sensor_readings)//3]
+        # print(str(len(left)))
+        middle = lidar_sensor_readings[len(lidar_sensor_readings)//3+1 : len(lidar_sensor_readings)]
+        # right =
+        if Finished_turning == True:
+            bearing = random.uniform(0, math.pi)
+        # print(str(pose_theta))
+        for i, rho in enumerate(middle):
+            if rho != float('inf') and rho < 1.5:
+                # print(str(rho))
+                print("collision detected")
+                Collision_Detected = True
+                vL = MAX_SPEED /4
+                vR = MAX_SPEED /4
+                #go somewhere else
+        if Collision_Detected:
+            # print("pose theta" + str(pose_theta))
+            # print("bearing" + str(bearing))
+            if bearing - 0.2 <= pose_theta <= bearing + 0.2:
+                # we are on the correct new bearing
+                print("we are on the bearing")
+                Collision_Detected = False
+                Finished_turning = True
+                
+            #spin in either direction until pose_theta is close to bearing       
+            elif pose_theta < bearing:
+                vL = -MAX_SPEED / 3
+                vR = MAX_SPEED / 3   
+                Finished_turning = False
+            else:
+                vL = MAX_SPEED / 3
+                vR = -MAX_SPEED / 3   
+                Finished_turning = False
     # Odometry code. Don't change vL or vR speeds after this line.
     # We are using GPS and compass for this lab to get a better pose but this is how you'll do the odometry
     if localization_mode == 'odometry':
